@@ -3,16 +3,20 @@ function val = globaleval(x,y,xbounds,ybounds,allnodesval)
 % local interpolation to find values at (x,y).
 % Assuming x,y are within xbounds and ybounds, otherwise return error
 if x > xbounds(end)
-    error('x too big');
+	x = xbounds(end);
+    % warning('x too big');
 end
 if x < xbounds(1)
-    error('x too small');
+	x = xbounds(1);
+    % warning('x too small');
 end
 if y > ybounds(end)
-    error('y too big');
+	y = ybounds(end);
+    % warning('y too big');
 end
 if y < ybounds(1)
-    error('x too big');
+	y = ybounds(1);
+    % warning('y too small');
 end
 i_right = find(xbounds>=x,1,'first');
 i_left = max(1,i_right-1);

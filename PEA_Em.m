@@ -27,8 +27,8 @@ nsim = ksim;
 if (exist('PEA_Em.mat','file')==2)
     load('PEA_Em.mat','coeff_mk','coeff_me')
 else
-    coeff_mk = [log(1/cbar/bbeta); 0; 0; 0]; % one constant, each for state variable
-    coeff_me = [log((1+h-kkappa_S/ttau/qbar-kkappa_F/ttau)/cbar/bbeta); 0; 0; 0];
+    coeff_mk = [1.9533; -0.2407; -0.5138; -0.0574]; % one constant, each for state variable
+    coeff_me = [1.8187; -0.2634; -0.4928; -0.0668];
 end
 
 % coeff_mf = [-2.57+0.37*(7.25)+1.67*(-0.006); +3.06; -0.37];
@@ -53,7 +53,7 @@ opts = statset('nlinfit');
 opts.Display = 'final';
 opts.MaxIter = 10000;
 diff = 10; iter = 0;
-while (diff>tol && iter <= maxiter)
+while (diff>damp_factor*tol && iter <= maxiter)
 % Simulation endo variables
 ksim(1) = kbar; esim(1) = ebar;
 for t = 1:T

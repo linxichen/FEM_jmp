@@ -10,149 +10,123 @@ addpath(genpath('./param'))
 mypara;
 nA = 9;
 nK = 50;
-nN = 50;
+nE = 50;
 T = 10000;
-[P,lnAgrid] = rouwen(rrho,0,ssigma/sqrt(1-rrho^2),nA);
+[P,lnAgrid] = rouwen(rrho_z,0,ssigma_z/sqrt(1-rrho_z^2),nA);
 Anodes = exp(lnAgrid);
 P = P';
 min_lnA = lnAgrid(1); max_lnA = lnAgrid(end);
-min_K = 300; max_K = 4000;
-min_N = 0.7; max_N = 0.99;
-damp_factor = 0.0;
+min_K = 0.01; max_K = 609;
+min_E = 0.01; max_E = 200;
+damp_factor = 0.1;
 maxiter = 10000;
 tol = 1e-6;
 options = optimoptions(@fsolve,'Display','none','Jacobian','off');
 
 %% Grid creaton
-k_rate = (log(max_K)-log(min_K))/nK;
-n_rate = (log(max_N)-log(min_N))/nN;
-Knodes = zeros(1,nK); Nnodes = zeros(1,nN);
-Knodes(1) = min_K; Nnodes(1) = min_N;
-for i = 2:nK
-    Knodes(i) = (1+k_rate)*Knodes(i-1);
-end
-for i = 2:nN
-    Nnodes(i) = (1+n_rate)*Nnodes(i-1);
-end
-N = nA*nK*nN;
-[Kmesh,Amesh,Nmesh] = meshgrid(Knodes,Anodes,Nnodes);
+ln_kgrid = linspace(log(min_K),log(max_K),nK);
+Knodes = exp(ln_kgrid);
+ln_egrid = linspace(log(min_E),log(max_E),nE);
+Enodes = exp(ln_egrid);
+N = nA*nK*nE;
+[Kmesh,Amesh,Nmesh] = meshgrid(Knodes,Anodes,Enodes);
 
-%% Encapsulate all parameters
-param = [... 
- bbeta; % 1
- ggamma; % 2
- kkappa; % 3
- eeta; % 4
- rrho; %5
- ssigma; %6
- x; % 7
- aalpha; % 8
- ddelta; % 9
- xxi; % 10
- ttau; % 11
- z % 12
- ];
+% %% Encapsulate all parameters
+% param = [... 
+%  bbeta; % 1
+%  ggamma; % 2
+%  kkappa; % 3
+%  eeta; % 4
+%  rrho; %5
+%  ssigma; %6
+%  x; % 7
+%  aalpha; % 8
+%  ddelta; % 9
+%  xxi; % 10
+%  ttau; % 11
+%  z % 12
+%  ];
 
 %% Precomputation and initial guess
 tot_stuff = zeros(N,1); ustuff = zeros(N,1);
-EMHval = zeros(nA,nK,nN); EMFval = EMHval;
-EMHval_temp = EMHval; EMFval_temp = EMFval;
-parfor i = 1:N
-	[i_a,i_k,i_n] = ind2sub([nA,nK,nN],i);
-	a = Anodes(i_a); k  = Knodes(i_k); n = Nnodes(i_n); %#ok<PFBNS>
-	tot_stuff(i) = a*k^aalpha*n^(1-aalpha) + (1-ddelta)*k + z*(1-n);
-	ustuff(i) = xxi*(1-n)^(1-eeta);
-end
-if (exist('PEA_Em_FEM.mat','file'))
-    load('PEA_Em_FEM.mat','EMHval','EMFval');
-end
-if isequal(size(EMHval),[nA nK nN]) ~= 1
-	EMHval = zeros(nA,nK,nN); EMFval = EMHval;
-	EMHval_temp = EMHval; EMFval_temp = EMFval;
-    coeff_lnmh = zeros(4,1); coeff_lnmf = zeros(4,1);
-    coeff_lnmh(1) = 2.247337592951108;
-    coeff_lnmh(2) = -0.041544383160081;
-    coeff_lnmh(3) = -0.607644008294761;
-    coeff_lnmh(4) = -0.004314696290213;
+EMKval = zeros(nA,nK,nE); EMEval = EMKval;
+EMKval_temp = EMKval; EMEval_temp = EMEval;
+% parfor i = 1:N
+% 	[i_a,i_k,i_n] = ind2sub([nA,nK,nE],i);
+% 	a = Anodes(i_a); k  = Knodes(i_k); n = Nnodes(i_n); %#ok<PFBNS>
+% 	tot_stuff(i) = a*k^aalpha*n^(1-aalpha) + (1-ddelta)*k + z*(1-n);
+% 	ustuff(i) = xxi*(1-n)^(1-eeta);
+% end
+% if (exist('PEA_Em_FEM.mat','file'))
+%     load('PEA_Em_FEM.mat','EMKval','EMEval');
+% end
+	EMKval = zeros(nA,nK,nE); EMEval = EMKval;
+	EMKval_temp = EMKval; EMEval_temp = EMEval;
+    coeff_lnmk = zeros(4,1); coeff_lnme = zeros(4,1);
+    coeff_lnmk(1) = 1.9533;
+    coeff_lnmk(2) = -0.2407;
+    coeff_lnmk(3) = -0.5138;
+    coeff_lnmk(4) = -0.0574;
     
-    coeff_lnmf(1) = 2.351435745790115;
-    coeff_lnmf(2) = 2.203515288267346;
-    coeff_lnmf(3) = -0.364368568546649;
-    coeff_lnmf(4) = -0.011952817385299;
+    coeff_lnme(1) = 1.8187;
+    coeff_lnme(2) = -0.2634;
+    coeff_lnme(3) = -0.4928;
+    coeff_lnme(4) = -0.0668;
     parfor i = 1:N
-        [i_a,i_k,i_n] = ind2sub([nA,nK,nN],i);
-        a = Anodes(i_a); k  = Knodes(i_k); n = Nnodes(i_n); %#ok<PFBNS>
-        EMHval(i) = exp([1 log(a) log(k) log(n)]*coeff_lnmh);
-        EMFval(i) = exp([1 log(a) log(k) log(n)]*coeff_lnmf);
-    end
-end
+        [i_a,i_k,i_e] = ind2sub([nA,nK,nE],i);
+        a = Anodes(i_a); k  = Knodes(i_k); e = Enodes(i_e); %#ok<PFBNS>
+        EMKval(i) = exp([1 log(a) log(k) log(e)]*coeff_lnmk);
+        EMEval(i) = exp([1 log(a) log(k) log(e)]*coeff_lnme);
+	end
+	
+% Pack grids
+grids.EMKval = EMKval;
+grids.EMEval = EMEval;
+grids.Knodes = Knodes;
+grids.Enodes = Enodes;
 
-
-%% Solve for SS
-kss = k_ss;
-nss = n_ss;
 
 %% Iteration
 diff = 10; iter = 0;
 while (diff>tol && iter <= maxiter)
     %% Time iter step, uses endo grid technique
     parfor i = 1:N
-        [i_a,i_k,i_n] = ind2sub([nA,nK,nN],i);
-        n = Nnodes(i_n); k = Knodes(i_k);
-        EMH = globaleval(k,n,Knodes,Nnodes,squeeze(EMHval(i_a,:,:)));
-        EMF = globaleval(k,n,Knodes,Nnodes,squeeze(EMFval(i_a,:,:)));
-        c = 1/(bbeta*EMH);
-        q = kkappa/c/(bbeta*EMF);
-        if q <= 0
-            % warning('q <= 0!!')
-            q = 0;
-            ttheta = 0;
-            v = 0;
-            kplus = tot_stuff(i) - c - kkappa*v;
-            nplus = (1-x)*n;
-        else
-            ttheta = (q/xxi)^(1/(eeta-1));
-            v = ttheta*(1-n);
-            kplus = tot_stuff(i) - c - kkappa*v;
-            nplus = (1-x)*n + xxi*v^eeta*(1-n)^(1-eeta);
-        end
-
-        EMH_hat = 0; EMF_hat = 0;
+        [i_a,i_k,i_e] = ind2sub([nA,nK,nE],i);
+        e = Enodes(i_e); k = Knodes(i_k); A = Anodes(i_a);
+		state = [A k e];
+        EMK = globaleval(k,e,Knodes,Enodes,squeeze(EMKval(i_a,:,:)));
+        EME = globaleval(k,e,Knodes,Enodes,squeeze(EMEval(i_a,:,:)));
+		
+		% Find current control vars
+		control = state2control_FEM(state,i_a,grids,param);
+		kplus = control.kplus;
+		eplus = control.eplus;
+		
+		% Find the expected EM
+        EMK_hat = 0; EME_hat = 0;
         for i_node = 1:nA
             aplus = Anodes(i_node);
-            EMH_plus = globaleval(kplus,nplus,Knodes,Nnodes,squeeze(EMHval(i_node,:,:)));
-            EMF_plus = globaleval(kplus,nplus,Knodes,Nnodes,squeeze(EMFval(i_node,:,:)));
-            cplus = 1/(bbeta*EMH_plus);
-            qplus = kkappa/cplus/(bbeta*EMF_plus);
-			if qplus <= 0
-				% warning('qplus <= 0!!')
-				qplus = 0;
-				tthetaplus = 0;
-				vplus = 0;
-				EMH_hat = EMH_hat + P(i_a,i_node)*((1-ddelta+aalpha*aplus*(kplus/nplus)^(aalpha-1))/cplus);
-				EMF_hat = EMF_hat + P(i_a,i_node)*(( (1-ttau)*((1-aalpha)*aplus*(kplus/nplus)^aalpha-z-ggamma*cplus) )/cplus );
-			else
-				tthetaplus = (qplus/xxi)^(1/(eeta-1));
-				vplus = tthetaplus*(1-nplus);
-				EMH_hat = EMH_hat + P(i_a,i_node)*((1-ddelta+aalpha*aplus*(kplus/nplus)^(aalpha-1))/cplus);
-				EMF_hat = EMF_hat + P(i_a,i_node)*(( (1-ttau)*((1-aalpha)*aplus*(kplus/nplus)^aalpha-z-ggamma*cplus) + (1-x)*kkappa/qplus - ttau*kkappa*tthetaplus )/cplus );
-			end
+			stateplus = [aplus kplus eplus];
+			control_plus = state2control_FEM(stateplus,i_node,grids,param);
+			
+			EMK_hat = EMK_hat + P(i_a,i_node)*control_plus.mk;
+			EME_hat = EME_hat + P(i_a,i_node)*control_plus.me;
         end
         
-        EMHval_temp(i) = EMH_hat;
-        EMFval_temp(i) = EMF_hat;
+        EMKval_temp(i) = EMK_hat;
+        EMEval_temp(i) = EME_hat;
     end
     
     %% Damped update
-    EMHval_new = (1-damp_factor)*EMHval_temp+(damp_factor)*EMHval;
-    EMFval_new = (1-damp_factor)*EMFval_temp+(damp_factor)*EMFval;
+    EMKval_new = (damp_factor)*EMKval_temp+(1-damp_factor)*EMKval;
+    EMEval_new = (damp_factor)*EMEval_temp+(1-damp_factor)*EMEval;
     
     %% Compute norm
-    diff = norm([EMHval(:);EMFval(:)]-[EMHval_new(:);EMFval_new(:)],Inf);
+    diff = norm([EMKval(:);EMEval(:)]-[EMKval_new(:);EMEval_new(:)],Inf);
     
     %% Update
-    EMHval = EMHval_new;
-    EMFval = EMFval_new;
+    EMKval = EMKval_new;
+    EMEval = EMEval_new;
     iter = iter+1;
     %% Display something
     iter
@@ -178,14 +152,14 @@ for i_a = 1:nA
     a = Agrid(i_a);
     for i_k = 1:nk_ee
         k = Kgrid(i_k);
-        for i_n = 1:nnn_ee
-            n = Ngrid(i_n);
-			tot_stuff = a*k^aalpha*n^(1-aalpha)+(1-ddelta)*k+z*(1-n);
-			ustuff = xxi*(1-n)^(1-eeta);
+        for i_e = 1:nnn_ee
+            e = Ngrid(i_e);
+			tot_stuff = a*k^aalpha*e^(1-aalpha)+(1-ddelta)*k+z*(1-e);
+			ustuff = xxi*(1-e)^(1-eeta);
             
-            EMH = globaleval(k,n,Knodes,Nnodes,squeeze(EMHval(i_a,:,:)));
-            EMF = globaleval(k,n,Knodes,Nnodes,squeeze(EMFval(i_a,:,:)));
-            c = 1/(bbeta*EMH);
+            EMK = globaleval(k,e,Knodes,Enodes,squeeze(EMKval(i_a,:,:)));
+            EMF = globaleval(k,e,Knodes,Enodes,squeeze(EMEval(i_a,:,:)));
+            c = 1/(bbeta*EMK);
             q = kkappa/c/(bbeta*EMF);            
             
             if q <= 0
@@ -194,27 +168,27 @@ for i_a = 1:nA
                 ttheta = 0;
                 v = 0;
                 kplus = tot_stuff - c - kkappa*v;
-                nplus = (1-x)*n;
+                nplus = (1-x)*e;
             else
                 ttheta = (q/xxi)^(1/(eeta-1));
-                v = ttheta*(1-n);
+                v = ttheta*(1-e);
                 kplus = tot_stuff - c - kkappa*v;
-                nplus = (1-x)*n + xxi*v^eeta*(1-n)^(1-eeta);
+                nplus = (1-x)*e + xxi*v^eeta*(1-e)^(1-eeta);
             end
             
-            cc(i_a,i_k,i_n) = c;
-            cc_dynare(i_a,i_k,i_n) = exp( 2.130385+0.039519*(log(a)/rrho-0)+0.606879*(log(k)-log(k_ss))+0.005573*(log(n)-log(n_ss)) );
-            vv(i_a,i_k,i_n) = v;
-            vv_dynare(i_a,i_k,i_n) = exp( -2.899249+3.417972*(log(a)/rrho-0)+0.451375*(log(k)-log(k_ss))+(-17.928147)*(log(n)-log(n_ss)) );
-            tthetattheta(i_a,i_k,i_n) = ttheta;
-            tthetattheta_dynare(i_a,i_k,i_n) = exp( 0+3.417972*(log(a)/rrho-0)+0.451375*(log(k)-log(k_ss))+(-0.767653)*(log(n)-log(n_ss)) );
+            cc(i_a,i_k,i_e) = c;
+            cc_dynare(i_a,i_k,i_e) = exp( 2.130385+0.039519*(log(a)/rrho-0)+0.606879*(log(k)-log(k_ss))+0.005573*(log(e)-log(n_ss)) );
+            vv(i_a,i_k,i_e) = v;
+            vv_dynare(i_a,i_k,i_e) = exp( -2.899249+3.417972*(log(a)/rrho-0)+0.451375*(log(k)-log(k_ss))+(-17.928147)*(log(e)-log(n_ss)) );
+            tthetattheta(i_a,i_k,i_e) = ttheta;
+            tthetattheta_dynare(i_a,i_k,i_e) = exp( 0+3.417972*(log(a)/rrho-0)+0.451375*(log(k)-log(k_ss))+(-0.767653)*(log(e)-log(n_ss)) );
 
 			% Find expected mh, mf tomorrow if current coeff applies tomorrow
-            EMH_hat = 0; EMF_hat = 0;
+            EMH_hat = 0; EME_hat = 0;
             for i_node = 1:nA
                 aplus = Anodes(i_node);
-                EMH_plus = globaleval(kplus,nplus,Knodes,Nnodes,squeeze(EMHval(i_node,:,:)));
-                EMF_plus = globaleval(kplus,nplus,Knodes,Nnodes,squeeze(EMFval(i_node,:,:)));
+                EMH_plus = globaleval(kplus,nplus,Knodes,Enodes,squeeze(EMKval(i_node,:,:)));
+                EMF_plus = globaleval(kplus,nplus,Knodes,Enodes,squeeze(EMEval(i_node,:,:)));
                 cplus = 1/(bbeta*EMH_plus);
                 qplus = kkappa/cplus/(bbeta*EMF_plus);
 				if qplus <= 0
@@ -223,22 +197,22 @@ for i_a = 1:nA
 					tthetaplus = 0;
 					vplus = 0;
 					EMH_hat = EMH_hat + P(i_a,i_node)*((1-ddelta+aalpha*aplus*(kplus/nplus)^(aalpha-1))/cplus);
-					EMF_hat = EMF_hat + P(i_a,i_node)*(( (1-ttau)*((1-aalpha)*aplus*(kplus/nplus)^aalpha-z-ggamma*cplus) )/cplus );
+					EME_hat = EME_hat + P(i_a,i_node)*(( (1-ttau)*((1-aalpha)*aplus*(kplus/nplus)^aalpha-z-ggamma*cplus) )/cplus );
 				else
 					tthetaplus = (qplus/xxi)^(1/(eeta-1));
 					vplus = tthetaplus*(1-nplus);
 					EMH_hat = EMH_hat + P(i_a,i_node)*((1-ddelta+aalpha*aplus*(kplus/nplus)^(aalpha-1))/cplus);
-					EMF_hat = EMF_hat + P(i_a,i_node)*(( (1-ttau)*((1-aalpha)*aplus*(kplus/nplus)^aalpha-z-ggamma*cplus) + (1-x)*kkappa/qplus - ttau*kkappa*tthetaplus )/cplus );
+					EME_hat = EME_hat + P(i_a,i_node)*(( (1-ttau)*((1-aalpha)*aplus*(kplus/nplus)^aalpha-z-ggamma*cplus) + (1-x)*kkappa/qplus - ttau*kkappa*tthetaplus )/cplus );
 				end
             end
 
 			c_imp = 1/(bbeta*EMH_hat);
-			q_imp = kkappa/c_imp/(bbeta*EMF_hat);
+			q_imp = kkappa/c_imp/(bbeta*EME_hat);
 			ttheta_imp = (q_imp/xxi)^(1/(eeta-1));
-			v_imp = ttheta_imp*(1-n);
+			v_imp = ttheta_imp*(1-e);
 
-            EEerror_c(i_a,i_k,i_n) = abs((c-c_imp)/c_imp);   
-            EEerror_v(i_a,i_k,i_n) = abs((v-v_imp)/v_imp);  
+            EEerror_c(i_a,i_k,i_e) = abs((c-c_imp)/c_imp);   
+            EEerror_v(i_a,i_k,i_e) = abs((v-v_imp)/v_imp);  
         end
     end
 end
@@ -255,13 +229,13 @@ ksim = k_ss*ones(1,T); nsim = n_ss*ones(1,T);
 tthetasim = zeros(1,T); vsim = zeros(1,T); usim = zeros(1,T);
 for t = 1:T
     asim(t) = Anodes(aindexsim(t)); a = asim(t);
-    k = ksim(t); n = nsim(t);
-    tot_stuff = a*k^aalpha*n^(1-aalpha)+(1-ddelta)*k+z*(1-n);
-    ustuff = xxi*(1-n)^(1-eeta);
+    k = ksim(t); e = nsim(t);
+    tot_stuff = a*k^aalpha*e^(1-aalpha)+(1-ddelta)*k+z*(1-e);
+    ustuff = xxi*(1-e)^(1-eeta);
     
-    EMH = globaleval(k,n,Knodes,Nnodes,squeeze(EMHval(aindexsim(t),:,:)));
-    EMF = globaleval(k,n,Knodes,Nnodes,squeeze(EMFval(aindexsim(t),:,:)));
-    c = 1/(bbeta*EMH);
+    EMK = globaleval(k,e,Knodes,Enodes,squeeze(EMKval(aindexsim(t),:,:)));
+    EMF = globaleval(k,e,Knodes,Enodes,squeeze(EMEval(aindexsim(t),:,:)));
+    c = 1/(bbeta*EMK);
     q = kkappa/c/(bbeta*EMF);
     
     if q <= 0
@@ -270,12 +244,12 @@ for t = 1:T
         ttheta = 0;
         v = 0;
         kplus = tot_stuff - c - kkappa*v;
-        nplus = (1-x)*n;
+        nplus = (1-x)*e;
     else
         ttheta = (q/xxi)^(1/(eeta-1));
-        v = ttheta*(1-n);
+        v = ttheta*(1-e);
         kplus = tot_stuff - c - kkappa*v;
-        nplus = (1-x)*n + xxi*v^eeta*(1-n)^(1-eeta);
+        nplus = (1-x)*e + xxi*v^eeta*(1-e)^(1-eeta);
     end
     
     tthetasim(t) = ttheta;
@@ -306,7 +280,7 @@ plot(Kgrid,squeeze(EEerror_v(ceil(nA/2),:,ceil(nnn_ee/2))))
 title('Euler Error of Vacancy')
 print(h_v,'-dpsc','./results/EEerror_v.eps')
 
-result_mf = @(k,n) globaleval(k,n,Knodes,Nnodes,squeeze(EMFval(1,:,:)));
+result_mf = @(k,n) globaleval(k,n,Knodes,Enodes,squeeze(EMEval(1,:,:)));
 h_EMF = figure;
 ezsurf(result_mf,[Kgrid(1),Kgrid(end),Ngrid(1),Ngrid(end)])
 print(h_EMF,'-dpsc','./results/EMF.eps')

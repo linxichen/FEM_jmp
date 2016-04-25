@@ -1,4 +1,4 @@
-function control = state2control(state,coeff_mk,coeff_me,param)
+function control = state2control_FEM(state,i_a,grids,param)
 % state = A, k, e
 % coeff_me/mk are all coefficients
 % param a container of parameters
@@ -15,21 +15,29 @@ gyratio = param.gyratio;
 pphi = param.pphi;
 ddelta = param.ddelta;
 
-% find expectation terms
-EM = exp([1 log(state)]*[coeff_mk coeff_me]);
+% load grids
+Knodes = grids.Knodes;
+Enodes = grids.Enodes;
+EMKval = grids.EMKval;
+EMEval = grids.EMEval;
+
 A = state(1); k = state(2); e = state(3);
 
+% find expectation terms
+EMK = globaleval(k,e,Knodes,Enodes,squeeze(EMKval(i_a,:,:)));
+EME = globaleval(k,e,Knodes,Enodes,squeeze(EMEval(i_a,:,:)));
+
 % Find expectation terms tomorrow
-Eme = EM(2); Emk = EM(1);
+Eme = EME; Emk = EMK;
 
 % Back out other variables
 c = (bbeta*Emk)^(-1);
 q = kkappa_S/ttau*(1+h-c*bbeta*Eme-kkappa_F/ttau)^(-1);
 if q >= 1
-	q = 1-1e-7;
+	q = 0.5;
 	% warning('q>=1');
 elseif q <=0
-	q = 1e-7;
+	q = 0.5;
 	% warning('q<=0');
 end
 ttheta = (q^(-iiota) - 1)^(1/iiota);
