@@ -55,7 +55,7 @@ elseif isreal(n_roots(1)) && n_roots(1) < 1 && n_roots(2)>0
 else
 	n_roots;
 	n = 0.3;
-	% warning('cubic eqn has no good solution, force nbar.');
+	warning('cubic eqn has no good solution, force nbar.');
 end
 y = A*k^aalpha*n^(1-aalpha);
 v = ttheta*(e+y);

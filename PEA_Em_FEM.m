@@ -16,8 +16,8 @@ T = 10000;
 Anodes = exp(lnAgrid);
 P = P';
 min_lnA = lnAgrid(1); max_lnA = lnAgrid(end);
-min_K = 0.01; max_K = 609;
-min_E = 0.01; max_E = 200;
+min_K = 0.01; max_K = 50;
+min_E = 0.01; max_E = 40;
 damp_factor = 0.1;
 maxiter = 10000;
 tol = 1e-6;
@@ -80,23 +80,24 @@ else
 	end
 end
 	
-% Pack grids
-grids.EMKval = EMKval;
-grids.EMEval = EMEval;
-grids.Knodes = Knodes;
-grids.Enodes = Enodes;
+
 
 
 %% Iteration
 diff = 10; iter = 0;
 while (diff>tol && iter <= maxiter)
+	% Pack grids, very important
+	grids.EMKval = EMKval;
+	grids.EMEval = EMEval;
+	grids.Knodes = Knodes;
+	grids.Enodes = Enodes;
+	
     %% Time iter step, uses endo grid technique
     parfor i = 1:N
+		
         [i_a,i_k,i_e] = ind2sub([nA,nK,nE],i);
         e = Enodes(i_e); k = Knodes(i_k); A = Anodes(i_a);
 		state = [A k e];
-        EMK = globaleval(k,e,Knodes,Enodes,squeeze(EMKval(i_a,:,:)));
-        EME = globaleval(k,e,Knodes,Enodes,squeeze(EMEval(i_a,:,:)));
 		
 		% Find current control vars
 		control = state2control_FEM(state,i_a,grids,param);
@@ -226,11 +227,15 @@ EEerror_v_mean = mean(EEerror_v(:));
 %% Simulation
 P_cdf = cumsum(P,2);
 aindexsim = zeros(1,T); aindexsim(1) = ceil(nA/2);
-ksim = k_ss*ones(1,T); nsim = n_ss*ones(1,T);
-tthetasim = zeros(1,T); vsim = zeros(1,T); usim = zeros(1,T);
+ksim = kbar*ones(1,T); esim = ebar*ones(1,T);
+% tthetasim = zeros(1,T); vsim = zeros(1,T); usim = zeros(1,T);
 for t = 1:T
     asim(t) = Anodes(aindexsim(t)); a = asim(t);
     k = ksim(t); e = nsim(t);
+	state = [a k e];
+	
+	control = state2control_FEM(state,aindexsim(t),grids,param);
+	
     tot_stuff = a*k^aalpha*e^(1-aalpha)+(1-ddelta)*k+z*(1-e);
     ustuff = xxi*(1-e)^(1-eeta);
     
