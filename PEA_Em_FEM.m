@@ -57,27 +57,28 @@ EMKval_temp = EMKval; EMEval_temp = EMEval;
 % 	tot_stuff(i) = a*k^aalpha*n^(1-aalpha) + (1-ddelta)*k + z*(1-n);
 % 	ustuff(i) = xxi*(1-n)^(1-eeta);
 % end
-% if (exist('PEA_Em_FEM.mat','file'))
-%     load('PEA_Em_FEM.mat','EMKval','EMEval');
-% end
+if (exist('PEA_Em_FEM.mat','file'))
+	load('PEA_Em_FEM.mat','EMKval','EMEval');
+else
 	EMKval = zeros(nA,nK,nE); EMEval = EMKval;
 	EMKval_temp = EMKval; EMEval_temp = EMEval;
-    coeff_lnmk = zeros(4,1); coeff_lnme = zeros(4,1);
-    coeff_lnmk(1) = 1.9533;
-    coeff_lnmk(2) = -0.2407;
-    coeff_lnmk(3) = -0.5138;
-    coeff_lnmk(4) = -0.0574;
-    
-    coeff_lnme(1) = 1.8187;
-    coeff_lnme(2) = -0.2634;
-    coeff_lnme(3) = -0.4928;
-    coeff_lnme(4) = -0.0668;
-    parfor i = 1:N
-        [i_a,i_k,i_e] = ind2sub([nA,nK,nE],i);
-        a = Anodes(i_a); k  = Knodes(i_k); e = Enodes(i_e); %#ok<PFBNS>
-        EMKval(i) = exp([1 log(a) log(k) log(e)]*coeff_lnmk);
-        EMEval(i) = exp([1 log(a) log(k) log(e)]*coeff_lnme);
+	coeff_lnmk = zeros(4,1); coeff_lnme = zeros(4,1);
+	coeff_lnmk(1) = 1.9533;
+	coeff_lnmk(2) = -0.2407;
+	coeff_lnmk(3) = -0.5138;
+	coeff_lnmk(4) = -0.0574;
+	
+	coeff_lnme(1) = 1.8187;
+	coeff_lnme(2) = -0.2634;
+	coeff_lnme(3) = -0.4928;
+	coeff_lnme(4) = -0.0668;
+	parfor i = 1:N
+		[i_a,i_k,i_e] = ind2sub([nA,nK,nE],i);
+		a = Anodes(i_a); k  = Knodes(i_k); e = Enodes(i_e); %#ok<PFBNS>
+		EMKval(i) = exp([1 log(a) log(k) log(e)]*coeff_lnmk);
+		EMEval(i) = exp([1 log(a) log(k) log(e)]*coeff_lnme);
 	end
+end
 	
 % Pack grids
 grids.EMKval = EMKval;
