@@ -1,92 +1,79 @@
-% Follows Nir's Code
-bbeta = 0.999; % discount rate
-% ddelta = 0.025; % depreciation
-% kkappa = 0.213; % cost of vacancy
-aalpha = 0.33; % share of capital
-xxi = 1.390; % matching efficiency
-% ggamma = 0.399; % work disutility
-eeta = 0.4; % share of vacancy in matching function
-ttau = 1-eeta; % worker's bargaining power
-x = 0.0081; % exo seperation rate
-agg_u_target=x/(x+0.139); % we target this unemployment rate
-Qss = bbeta; % steady state SDF
+% copied from dynare
+aalpha  = 0.33;
+bbeta   = 0.997;
+ddelta  = 0.025;
+uupsilon= 1.0;
+Frisch  = 1.0;
 
-% Markov Process
-ssigma = 0.03;
-rrho = 0.95;
-Abar = 1;
+% goods market frictions (calibration 1, qbar = 0.11)
+kkappa_S = 0.00000001; % play with this
+kkappa_F = 0.16; % play with this
+ttau = 0.2; % share of surplus to retailer
 
-pars(1) = bbeta;
-pars(2) = Abar;
-pars(3) = aalpha;
-pars(4) = eeta;
-pars(5) = ttau;
-pars(6) = Qss;
-pars(7) = x;
+% capital adjustment
+adjcost = 0.1; 
 
-% The set of momemts to be mathced
-rr         = 0.4;     %Replacement ratio
-z_HM       = 0.4;     % match the leisure value as a fraction of avg. wage as in Hall-Milgrom
-agg_ttheta  = 1;     % Average tightness ratio
-agg_jfr    = 0.139;   %avergae job finding rate
-i_y_target = 0.2;    % This is now the target of inv/output ratio
+% targets
+cy      = 0.59;
+nbar    = 0.3;
+fbar    = 0.4; % to match around 2.4 ISratio for final sale
+qbar    = 0.90;
+gyratio = 0.15;
+holdingcost = 0.04;
 
-% z = z_HM; % unemployment benefit
+% Exo process
+rrho_z      = 0.95;
+rrho_zk     = 0.5;
+rrho_g      = 0.95;
+ssigma_z    = 0.018;
+ssigma_zk   = 0.01;
+ssigma_g    = 0.01;
 
-% Parameters that are targets
-pars(8)   = i_y_target   ; 
-pars(9)   = rr;
-pars(10)   = z_HM;
-pars(11)   = agg_ttheta;
-pars(12)   = agg_jfr;
-pars(13) = agg_u_target;
+% find SS and rest of parameters
+%% Matching related
+ey        = 1/fbar - 1;
+Pmbar = 1 - kkappa_S/qbar - kkappa_F;
+term1 = -1 + (1-Pmbar)/ttau + bbeta*fbar*Pmbar/(1-bbeta*(1-fbar));
+term2 = 1- bbeta*(1-fbar);
+h = term1*term2;
+tthetabar = fbar/qbar;
+findela   = @(i) log(1+tthetabar^(-i)) + i*log(fbar);
+options = optimoptions('fsolve','TolFun',1e-10);
+iiota     = fsolve(findela,1.5,options);
+Ubar      = (fbar*(1+h-kkappa_S/qbar-kkappa_F) - h) /(1-bbeta*(1-fbar));
 
-guess1 = [0.3 1.2   0.5 0.002]
+% Great ratios
+rbar      = 1/bbeta + ddelta - 1;
+kovern    = (rbar/Ubar/aalpha)^(1/(aalpha-1));
+ybar      = kovern^aalpha*nbar;
+gbar      = gyratio*ybar;
+ebar      = ey*ybar;
+vovern    = tthetabar*(ebar+ybar)/nbar;
+covern    = (1-kkappa_F)*ybar/nbar - kkappa_S*vovern - ddelta*kovern - ebar*h/nbar - gbar/nbar;
 
-options=optimset('MaxIter',2000,'MaxFunEvals',20000,'TolFun',1e-22,'Diagnostics','on', 'Display','on');
-%[x,fval,flag]=fsolve('rbc_nir_ss_function',guess,options,rbc_pars);
-[solution,fval,flag]=fsolve('DMP_RBC_ss',guess1,options,pars); % The objective function can't be found, switching to solve_rbc_ss_function_alt
-% [solution,fval,flag]=fsolve('solve_rbc_ss_function_alt',guess1,options,pars); 
-solution;
+cbar      = covern*nbar;
+kbar      = kovern*nbar;
+ibar      = ddelta*kbar;
+mbar      = ybar;
+zbar      = 1;
+zkbar     = 1;
+mmubar    = 1/cbar;
+Pmbar     = 1-(kkappa_S/qbar+kkappa_F);
+gbar      = gyratio*ybar;
+masterwedgebar = (1-aalpha)*ybar*(1-nbar)/nbar/cbar;
 
-kkappa  = solution(1);
-z      = solution(2);
-ggamma  = solution(3);
-ddelta  = solution(4);
 
-r_ss = 1/bbeta - 1 + ddelta;
-k_n_ss = (r_ss/(Abar*aalpha))^(1/(aalpha-1));
-v_ss=agg_ttheta*agg_u_target;
-n_ss=1-agg_u_target;
-ttheta_ss=agg_ttheta;
-mmu_ss=agg_jfr;
-xxi = mmu_ss/agg_ttheta^eeta;
-q_ss  = xxi*agg_ttheta^(eeta-1);
-k_ss = k_n_ss*n_ss;
-inv_ss = ddelta*k_ss;
-y_ss = Abar*(k_ss^aalpha)*(n_ss^(1-aalpha));
-c_ss = y_ss - ddelta*k_ss - kkappa*v_ss + z*(1-n_ss);
-oomega_ss = ttau*Abar*(1-aalpha)*k_n_ss^aalpha + (1-ttau)*(z + ggamma*c_ss) + ttau*kkappa*ttheta_ss;
-const1 = 1-(1-x)*bbeta;
-Jn_ss = (Abar*(1-aalpha)*k_n_ss^aalpha - oomega_ss)/const1;
-rep_ratio = z/oomega_ss;
-leisure_value = (ggamma*c_ss)/oomega_ss;
-i_y_ss = inv_ss/(y_ss);
-lp_agg_ss=y_ss/n_ss;
-moments = [
-        rep_ratio - rr;
-        leisure_value - z_HM;
-        i_y_ss - i_y_target;
-        kkappa -  (q_ss)*bbeta*(Jn_ss);
-        ];
-moments;
+% Pick ppsi to satisfy cy = 0.6 and n = 0.2
+wbar      = Ubar*(1-aalpha)*kovern^(aalpha);
+pphi      = wbar*(1-nbar)/cbar;
 
- 
-A_ss=Abar;u_ss=agg_u_target;SDF_ss=bbeta;invest_ss=i_y_ss;
+% Find vacancy level from RC
+vbar      = ((1-kkappa_F)*ybar - cbar - ddelta*kbar - ebar*h -gbar)/kkappa_S;
 
-ssigma_A = ssigma;
-rrho_A = rrho;
-save DMP_RBC_PARAS.mat ...
-    lp_agg_ss rrho ssigma ssigma_A rrho_A z ttau ggamma kkappa bbeta aalpha xxi eeta x ddelta y_ss A_ss Abar k_ss n_ss mmu_ss q_ss ttheta_ss  u_ss SDF_ss oomega_ss r_ss Jn_ss c_ss invest_ss v_ss;
+% Getting the rest
+MCbar     = wbar^(1-aalpha)*rbar^(aalpha);
+
+
+save param.mat;
 
 
