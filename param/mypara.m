@@ -1,17 +1,17 @@
 % copied from dynare
-aalpha  = 0.33;
+aalpha  = 1/3;
 bbeta   = 0.997;
 ddelta  = 0.025;
 uupsilon= 1.0;
 Frisch  = 1.0;
 
 % goods market frictions (calibration 1, qbar = 0.11)
-kkappa_S = 0.00000001; % play with this
-kkappa_F = 0.16; % play with this
+kkappa_S = 0.05; % play with this
+kkappa_F = 0.005; % play with this
 ttau = 0.2; % share of surplus to retailer
 
 % capital adjustment
-adjcost = 0.1; 
+adjcost = 0.0; 
 
 % targets
 cy      = 0.59;
@@ -73,7 +73,18 @@ vbar      = ((1-kkappa_F)*ybar - cbar - ddelta*kbar - ebar*h -gbar)/kkappa_S;
 % Getting the rest
 MCbar     = wbar^(1-aalpha)*rbar^(aalpha);
 
+% pack into container
+param.bbeta = bbeta;
+param.kkappa_S = kkappa_S;
+param.kkappa_F = kkappa_F;
+param.ttau = ttau;
+param.h = h;
+param.iiota = iiota;
+param.aalpha = aalpha;
+param.gyratio = gyratio;
+param.pphi = pphi;
+param.ddelta = ddelta;
 
-save param.mat;
+% save 'param.mat';
 
 

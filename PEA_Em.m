@@ -9,45 +9,40 @@ addpath(genpath('param'));
 addpath(genpath('tools'));
 mypara;
 
-damp_factor = 0.8;
-T = 100000;
+damp_factor = 0.1;
+T = 10000;
 burnin = ceil(0.1*T);
 maxiter = 100000;
 tol = 1e-6;
 ksim = zeros(1,T);
 esim = ksim;
 Asim = ksim;
-mhsim = ksim;
-mfsim = ksim;
-Emfsim = ksim;
-Emhsim = ksim;
+mksim = ksim;
+mesim = ksim;
+Emksim = ksim;
+Emesim = ksim;
+qsim = ksim;
+nsim = ksim;
 
 if (exist('PEA_Em.mat','file')==2)
-    load('PEA_Em.mat','coeff_mh','coeff_mf')
+    load('PEA_Em.mat','coeff_mk','coeff_me')
 else
-    coeff_mh = [2.9741; -0.2324; -0.5963; -0.0059]; % one constant, each for state variable
-    coeff_mf = [2.7587; 1.3230; -0.2975; -0.1251];
+    coeff_mk = [log(1/cbar/bbeta); 0; 0; 0]; % one constant, each for state variable
+    coeff_me = [log((1+h-kkappa_S/ttau/qbar-kkappa_F/ttau)/cbar/bbeta); 0; 0; 0];
 end
 
 % coeff_mf = [-2.57+0.37*(7.25)+1.67*(-0.006); +3.06; -0.37];
 
-coeff_mh_old = coeff_mh;
-coeff_mf_old = coeff_mf;
-regeqn_mh = @(b,x) exp(b(1)*x(:,1)+b(2).*log(x(:,2))+b(3).*log(x(:,3))+b(4).*log(x(:,4))); % Model
-regeqn_mf = @(b,x) exp(b(1)*x(:,1)+b(2).*log(x(:,2))+b(3).*log(x(:,3))+b(4).*log(x(:,4))); % Model
-
-
-%% Solve for SS
-init_ss = [k_ss,0.3,0.8,0.1,2];
-ss = fsolve(@steadystate,init_ss);
-kss = ss(1);
-nss = ss(2);
+coeff_mk_old = coeff_mk;
+coeff_me_old = coeff_me;
+regeqn_mk = @(b,x) exp(b(1)*x(:,1)+b(2).*log(x(:,2))+b(3).*log(x(:,3))+b(4).*log(x(:,4))); % Model
+regeqn_me = @(b,x) exp(b(1)*x(:,1)+b(2).*log(x(:,2))+b(3).*log(x(:,3))+b(4).*log(x(:,4))); % Model
 
 %% Simulate shocks
 rng('default')
 eps = normrnd(0,1,1,T);
 for t = 2:T
-    Asim(t) = rrho_A*Asim(t-1) + ssigma_A*eps(t);
+    Asim(t) = rrho_z*Asim(t-1) + ssigma_z*eps(t);
 end
 Abar = 1;
 Asim = Abar*exp(Asim);
@@ -60,85 +55,92 @@ opts.MaxIter = 10000;
 diff = 10; iter = 0;
 while (diff>tol && iter <= maxiter)
 % Simulation endo variables
-ksim(1) = kss; esim(1) = nss;
+ksim(1) = kbar; esim(1) = ebar;
 for t = 1:T
+	% load current state
     state(1) = Asim(t);
     state(2) = ksim(t);
     state(3) = esim(t);
-    EM = exp([1 log(state)]*[coeff_mh coeff_mf]);
-    
-    y = Asim(t)*(ksim(t))^(aalpha)*(esim(t))^(1-aalpha);
-    c = (bbeta*EM(1))^(-1);
-    ttheta = (kkappa/(c*xxi*bbeta*EM(2)))^(1/(eeta-1));
-    v = ttheta*(1-esim(t));
-    mhsim(t) = (1-ddelta+aalpha*y/ksim(t))/c;
-    mfsim(t) = ( (1-ttau)*((1-aalpha)*y/esim(t)-z-ggamma*c) + (1-x)*kkappa/xxi*ttheta^(1-eeta) - ttau*kkappa*ttheta )/c;
+    EM = exp([1 log(state)]*[coeff_mk coeff_me]);
+	A = state(1); k = state(2); e = state(3);
+	
+	% find control vars
+	control = state2control(state,coeff_mk,coeff_me,param);
+	
+    % Find mk and me;
+    mksim(t) = control.mk;
+    mesim(t) = control.me;
+	
+	% find derived vars
+	qsim(t) = control.q;
+	nsim(t) = control.n;
     
     if (t<T)
-        ksim(t+1) = y - c +(1-ddelta)*ksim(t) - kkappa*v;
-        esim(t+1) = (1-x)*esim(t) + xxi*ttheta^(eeta)*(1-esim(t));
+		% Find predetermined next state
+		esim(t+1) = control.eplus;
+		ksim(t+1) = control.kplus;
         
         % Find expected mf and mh
         [n_nodes,epsi_nodes,weight_nodes] = GH_Quadrature(10,1,1);
-        Emf = 0; Emh = 0;
+        Emk = 0; Eme = 0;
         for i_node = 1:length(weight_nodes)
-            Aplus = exp(rrho_A*log(Asim(t)) + ssigma_A*epsi_nodes(i_node));
-            state(1) = Aplus;
-            state(2) = ksim(t+1);
-            state(3) = esim(t+1);
-            EM = exp([1 log(state)]*[coeff_mh coeff_mf]);
-            yplus = Aplus*(ksim(t+1))^(aalpha)*(esim(t+1))^(1-aalpha);
-            cplus = (bbeta*EM(1))^(-1);
-            tthetaplus = (kkappa/(cplus*xxi*bbeta*EM(2)))^(1/(eeta-1));
-            Emh = Emh + weight_nodes(i_node)*((1-ddelta+aalpha*yplus/ksim(t+1))/cplus);
-            Emf = Emf + weight_nodes(i_node)*(( (1-ttau)*((1-aalpha)*yplus/esim(t+1)-z-ggamma*cplus) + (1-x)*kkappa/xxi*tthetaplus^(1-eeta) - ttau*kkappa*tthetaplus )/cplus );
+            Aplus = exp(rrho_z*log(Asim(t)) + ssigma_z*epsi_nodes(i_node));
+            stateplus(1) = Aplus;
+            stateplus(2) = ksim(t+1);
+            stateplus(3) = esim(t+1);
+			kplus = stateplus(2); eplus = stateplus(3);
+						
+			% find control vars at t+1
+			controlplus = state2control(stateplus,coeff_mk,coeff_me,param);
+            Emk = Emk + weight_nodes(i_node)*(controlplus.mk);
+            Eme = Eme + weight_nodes(i_node)*(controlplus.me);
         end
-        Emfsim(t) = Emf;
-        Emhsim(t) = Emh;
+        Emksim(t) = Emk;
+        Emesim(t) = Eme;
     end
 end
 
 %% Get temp coeff
-ln_mh = log(Emhsim(burnin+1:end-1)');
-ln_mf = log(Emfsim(burnin+1:end-1)');
+ln_mk = log(Emksim(burnin+1:end-1)');
+ln_me = log(Emesim(burnin+1:end-1)');
 X = [ones(T-burnin-1,1) log(Asim(burnin+1:end-1)') log(ksim(burnin+1:end-1)') log(esim(burnin+1:end-1)')];
-coeff_mh_temp = (X'*X)\(X'*ln_mh);
-coeff_mf_temp = (X'*X)\(X'*ln_mf);
+coeff_mk_temp = (X'*X)\(X'*ln_mk);
+coeff_me_temp = (X'*X)\(X'*ln_me);
 
 %% Damped update
-coeff_mh_new = damp_factor*coeff_mh_temp+(1-damp_factor)*coeff_mh;
-coeff_mf_new = damp_factor*coeff_mf_temp+(1-damp_factor)*coeff_mf;
+coeff_mk_new = damp_factor*coeff_mk_temp+(1-damp_factor)*coeff_mk;
+coeff_me_new = damp_factor*coeff_me_temp+(1-damp_factor)*coeff_me;
 
 %% Compute norm
-diff = norm([coeff_mh;coeff_mf]-[coeff_mh_new;coeff_mf_new],Inf);
+diff = norm([coeff_mk;coeff_me]-[coeff_mk_new;coeff_me_new],Inf);
 
 %% Update
-coeff_mh = coeff_mh_new;
-coeff_mf = coeff_mf_new;
+coeff_mk = coeff_mk_new;
+coeff_me = coeff_me_new;
 iter = iter+1;
 %% Display something
 iter
 diff
-coeff_mh
-coeff_mf
+coeff_mk
+coeff_me
 
 end;
 
 %% Check Regression Accuracy
-md_mh = fitlm(X(:,2:end),ln_mh,'linear','RobustOpts','on')
-md_mf = fitlm(X(:,2:end),ln_mf,'linear','RobustOpts','on')
+md_mk = fitlm(X(:,2:end),ln_mk,'linear','RobustOpts','on')
+md_me = fitlm(X(:,2:end),ln_me,'linear','RobustOpts','on')
 
 %% Euler equation error
-nk = 50; nA = 50; nnn = 50;
+nk = 50; nA = 50; ne = 50;
 Kgrid = linspace(0.8*kss,1.2*kss,nk);
 Agrid = linspace(0.8,1.2,nA);
-Ngrid = linspace(0.7,0.999,nnn);
-EEerror = 999999*ones(nA,nk,nnn);
+Ngrid = linspace(0.7,0.999,ne);
+EEerror = 999999*ones(nA,nk,ne);
 for i_A = 1:nA
     A = Agrid(i_A);
     for i_k = 1:nk
         k = Kgrid(i_k);
-        for i_n = 1:nnn
+        for i_n = 1:ne
             n = Ngrid(i_n);
             state(1) = A;
             state(2) = k;
@@ -175,7 +177,7 @@ end
 EEerror_inf = norm(EEerror(:),inf);
 EEerror_mean = mean(EEerror(:));
 figure
-plot(Kgrid,EEerror(ceil(nA/2),:,ceil(nnn/2)))
+plot(Kgrid,EEerror(ceil(nA/2),:,ceil(ne/2)))
 
 %% Implied policy functions and find wages
 Agrid = csvread('../code/201505181149/results/Agrid.csv');
@@ -183,9 +185,9 @@ Kgrid = csvread('../code/201505181149/results/Kgrid.csv');
 Ngrid = csvread('../code/201505181149/results/Ngrid.csv');
 nA = length(Agrid);
 nk = length(Kgrid);
-nnn = length(Ngrid);
+ne = length(Ngrid);
 
-kk = zeros(nA,nk,nnn);
+kk = zeros(nA,nk,ne);
 cc = kk;
 vv = kk;
 nn = kk;
@@ -198,7 +200,7 @@ vv_dynare = kk;
 
 mmummu = kk;
 for i_k = 1:nk
-    for i_n = 1:nnn
+    for i_n = 1:ne
         for i_A = 1:nA
             state(1) = Agrid(i_A); A = state(1);
             state(2) = Kgrid(i_k); k = state(2);
@@ -236,7 +238,7 @@ csvwrite('../code/201505181149/kPEA_export.csv',kk(:));
 csvwrite('../code/201505181149/nPEA_export.csv',nn(:));
 
 
-i_mid_n = ceil(nnn/2);
+i_mid_n = ceil(ne/2);
 i_mid_A = ceil(nA/2);
 linewitdh=1.5;
 figure
