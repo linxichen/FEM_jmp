@@ -134,6 +134,8 @@ while (diff>tol && iter <= maxiter)
     iter
     diff
 
+	save;
+
 end;
 
 %% Euler equation error
