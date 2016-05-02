@@ -16,8 +16,8 @@ T = 10000;
 Anodes = exp(lnAgrid);
 P = P';
 min_lnA = lnAgrid(1); max_lnA = lnAgrid(end);
-min_K = 0.01; max_K = 50;
-min_E = 0.01; max_E = 40;
+min_K = 0.01; max_K = 2;
+min_E = 0.01; max_E = 3;
 damp_factor = 0.1;
 maxiter = 10000;
 tol = 1e-6;
@@ -137,6 +137,18 @@ while (diff>tol && iter <= maxiter)
 	save;
 
 end;
+
+%% Inspect policy function
+i_A = ceil(nA/2);
+i_E = ceil(nE/2);
+for i_k = 1:length(Knodes)
+	state(1) = Anodes(i_A); state(3) = Enodes(i_E);
+	state(2) = Knodes(i_k);
+	control = state2control_FEM(state,i_A,grids,param);
+	kplus_policy(i_k) = control.kplus;
+	n_policy(i_k) = control.n;
+	q_policy(i_k) = control.q;
+end
 
 %% Euler equation error
 nk_ee = 60; nnn_ee = 60;

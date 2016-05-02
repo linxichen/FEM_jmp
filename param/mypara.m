@@ -6,8 +6,8 @@ uupsilon= 1.0;
 Frisch  = 1.0;
 
 % goods market frictions (calibration 1, qbar = 0.11)
-kkappa_S = 0.0000005; % play with this
-kkappa_F = 0.0000001; % play with this
+kkappa_S = 0.005; % play with this
+kkappa_F = 0.001; % play with this
 ttau = 0.6; % share of surplus to retailer
 
 % capital adjustment

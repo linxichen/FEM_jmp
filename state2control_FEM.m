@@ -34,11 +34,11 @@ Eme = EME; Emk = EMK;
 c = (bbeta*Emk)^(-1);
 q = kkappa_S/ttau*(1+h-c*bbeta*Eme-kkappa_F/ttau)^(-1);
 if q >= 1
-	q = 0.99;
-	% warning('q>=1');
+	q = 1;
+	warning('q>=1, binding');
 elseif q <=0
 	q = 0.01;
-	% warning('q<=0');
+	warning('q<=0');
 end
 ttheta = (q^(-iiota) - 1)^(1/iiota);
 f = (1+ttheta^(-iiota))^(1/iiota);
@@ -47,11 +47,11 @@ U = 1-(kkappa_S/q+kkappa_F)*(f+(1-f)/ttau);
 kovern = (pphi*c/U/(1-aalpha)/A)^(1/aalpha);
 n = k/kovern;
 if n >= 1
-	n = 0.99;
+	% n = 0.99;
 	% warning('n>=1');
 elseif n <=0
 	n = 0.01;
-	% warning('n<=0');
+	warning('n<=0');
 end
 
 % GG = pphi*c/U/(1-aalpha)/A/(k^aalpha);
