@@ -27,8 +27,8 @@ nsim = ksim;
 if (exist('PEA_Em.mat','file')==2)
     load('PEA_Em.mat','coeff_mk','coeff_me')
 else
-    coeff_mk = [1.21;0.40;-0.40;-0.04]; % one constant, each for state variable
-    coeff_me = [0.91;0.35;-0.36;-0.04];
+    coeff_mk = [1.08;-0.12;-0.40;-0.115]; % one constant, each for state variable
+    coeff_me = [0.78;-0.18;-0.36;-0.109];
 end
 
 % coeff_mf = [-2.57+0.37*(7.25)+1.67*(-0.006); +3.06; -0.37];
@@ -51,7 +51,7 @@ Asim = Abar*exp(Asim);
 diff = 10; iter = 0;
 while (diff>damp_factor*tol && iter <= maxiter)
 % Simulation endo variables
-ksim(1) = 120; esim(1) = 100;
+ksim(1) = kbar; esim(1) = ebar;
 for t = 1:T
 	% load current state
     state(1) = Asim(t);

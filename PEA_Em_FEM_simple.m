@@ -16,8 +16,8 @@ T = 10000;
 Anodes = exp(lnAgrid);
 P = P';
 min_lnA = lnAgrid(1); max_lnA = lnAgrid(end);
-min_K = 10; max_K = 200;
-min_E = 10; max_E = 200;
+min_K = 10; max_K = 50;
+min_E = 10; max_E = 50;
 damp_factor = 0.1;
 maxiter = 10000;
 tol = 1e-6;
@@ -63,15 +63,15 @@ else
 	EMKval = zeros(nA,nK,nE); EMEval = EMKval;
 	EMKval_temp = EMKval; EMEval_temp = EMEval;
 	coeff_lnmk = zeros(4,1); coeff_lnme = zeros(4,1);
-	coeff_lnmk(1) = 1.9533;
-	coeff_lnmk(2) = -0.2407;
-	coeff_lnmk(3) = -0.5138;
-	coeff_lnmk(4) = -0.0574;
+	coeff_lnmk(1) = 1.088797773684208;
+	coeff_lnmk(2) = -0.129812218799966;
+	coeff_lnmk(3) = -0.406510500200686;
+	coeff_lnmk(4) = -0.115089098685107;
 	
-	coeff_lnme(1) = 1.8187;
-	coeff_lnme(2) = -0.2634;
-	coeff_lnme(3) = -0.4928;
-	coeff_lnme(4) = -0.0668;
+	coeff_lnme(1) = 0.787865722488784;
+	coeff_lnme(2) = -0.186393266814723;
+	coeff_lnme(3) = -0.366080221457789;
+	coeff_lnme(4) = -0.109767893578230;
 	parfor i = 1:N
 		[i_a,i_k,i_e] = ind2sub([nA,nK,nE],i);
 		a = Anodes(i_a); k  = Knodes(i_k); e = Enodes(i_e); %#ok<PFBNS>
