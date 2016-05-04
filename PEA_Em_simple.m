@@ -127,6 +127,7 @@ end;
 md_mk = fitlm(X(:,2:end),ln_mk,'linear','RobustOpts','on')
 md_me = fitlm(X(:,2:end),ln_me,'linear','RobustOpts','on')
 
+save('trad_PEA_simple.mat')
 %% Euler equation error
 nk = 50; nA = 50; ne = 50;
 Kgrid = linspace(0.8*kss,1.2*kss,nk);
