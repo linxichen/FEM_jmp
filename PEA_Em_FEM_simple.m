@@ -8,7 +8,7 @@ addpath(genpath('./param'))
 
 %% Set the stage
 mypara_simple;
-nA = 9;
+nA = 17;
 nK = 50;
 nE = 50;
 T = 10000;
@@ -134,20 +134,36 @@ while (diff>tol && iter <= maxiter)
     iter
     diff
 
-	save;
+	save('FEM_PEA_simple.mat');
 
 end;
 
 %% Inspect policy function
-i_A = ceil(nA/2);
-i_E = ceil(nE/2);
-for i_k = 1:length(Knodes)
+i_k = ceil(nK-5);
+i_E = ceil(nE-5);
+for i_A = 1:length(Anodes)
 	state(1) = Anodes(i_A); state(3) = Enodes(i_E);
 	state(2) = Knodes(i_k);
 	control = state2control_FEM_simple(state,i_A,grids,param);
-	kplus_policy(i_k) = control.kplus;
-	q_policy(i_k) = control.q;
+	kplus_high(i_A) = control.kplus;
+	q_high(i_A) = control.q;
+	eplus = control.eplus;
+	CIPI_high(i_A) = eplus - e;
 end
+
+i_k = ceil(5);
+i_E = ceil(5);
+for i_A = 1:length(Anodes)
+	state(1) = Anodes(i_A); state(3) = Enodes(i_E);
+	state(2) = Knodes(i_k);
+	control = state2control_FEM_simple(state,i_A,grids,param);
+	kplus_low(i_A) = control.kplus;
+	q_low(i_A) = control.q;
+	eplus = control.eplus;
+	CIPI_low(i_A) = eplus - e;
+end
+
+plot(Anodes,CIPI_low,'-b',Anodes,CIPI_high,'-.r')
 
 %% Euler equation error
 nk_ee = 60; nnn_ee = 60;
@@ -241,45 +257,20 @@ EEerror_v_mean = mean(EEerror_v(:));
 P_cdf = cumsum(P,2);
 aindexsim = zeros(1,T); aindexsim(1) = ceil(nA/2);
 ksim = kbar*ones(1,T); esim = ebar*ones(1,T);
+asim = ones(1,T);
 % tthetasim = zeros(1,T); vsim = zeros(1,T); usim = zeros(1,T);
 for t = 1:T
     asim(t) = Anodes(aindexsim(t)); a = asim(t);
-    k = ksim(t); e = nsim(t);
+    k = ksim(t); e = esim(t);
 	state = [a k e];
 	
-	control = state2control_FEM(state,aindexsim(t),grids,param);
-	
-    tot_stuff = a*k^aalpha*e^(1-aalpha)+(1-ddelta)*k+z*(1-e);
-    ustuff = xxi*(1-e)^(1-eeta);
-    
-    EMK = globaleval(k,e,Knodes,Enodes,squeeze(EMKval(aindexsim(t),:,:)));
-    EMF = globaleval(k,e,Knodes,Enodes,squeeze(EMEval(aindexsim(t),:,:)));
-    c = 1/(bbeta*EMK);
-    q = kkappa/c/(bbeta*EMF);
-    
-    if q <= 0
-        warning('q <= 0!!')
-        q = 0;
-        ttheta = 0;
-        v = 0;
-        kplus = tot_stuff - c - kkappa*v;
-        nplus = (1-x)*e;
-    else
-        ttheta = (q/xxi)^(1/(eeta-1));
-        v = ttheta*(1-e);
-        kplus = tot_stuff - c - kkappa*v;
-        nplus = (1-x)*e + xxi*v^eeta*(1-e)^(1-eeta);
-    end
-    
-    tthetasim(t) = ttheta;
-    vsim(t) = v;
-    usim(t) = 1-nsim(t);
+	control = state2control_FEM_simple(state,aindexsim(t),grids,param);
     
     if t <= T-1
         uu = rand;
         aindexsim(t+1) = find(P_cdf(aindexsim(t),:)>=uu,1,'first');
-        ksim(t+1) = kplus;
-        nsim(t+1) = nplus;
+        ksim(t+1) = control.kplus;
+        esim(t+1) = control.eplus;
     end
 end
 

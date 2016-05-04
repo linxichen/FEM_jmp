@@ -7,18 +7,18 @@ Frisch  = 1.0;
 
 % goods market frictions (calibration 1, qbar = 0.11)
 options = optimoptions('fsolve','TolFun',1e-9);
-kkappa_S = 0.09; % play with this
-kkappa_F = 0.00; % play with this
-ttau = 0.8; % share of surplus to retailer
+kkappa_S = 0.01; % play with this
+kkappa_F = 0.001; % play with this
+ttau = 0.4; % share of surplus to retailer
 iiota = 1.27;
-h = 0.006;
+h = 0.005;
 ff = @(t) (1+t^(-iiota))^(-1/iiota);
 qq = @(t) (1+t^(iiota))^(-1/iiota);
 UU = @(t) (ff(t)*(1-kkappa_F-kkappa_S/qq(t))-h )/(1-bbeta*(1-ff(t)));
 objfunc = @(t)  ttau*(1-bbeta*UU(t))-kkappa_S/qq(t)-kkappa_F;
 tthetabar = fsolve(objfunc,100,options);
-qbar = qq(tthetabar);
-fbar = ff(tthetabar);
+qbar = qq(tthetabar)
+fbar = ff(tthetabar)
 
 %% plot
 figure

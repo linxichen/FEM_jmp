@@ -67,5 +67,6 @@ control.me = me;
 control.q = q;
 control.f = f;
 control.n = 1.0;
+control.CIPI = eplus - e;
 
 end
