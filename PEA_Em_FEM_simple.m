@@ -9,18 +9,18 @@ addpath(genpath('./param'))
 %% Set the stage
 mypara_simple;
 nA = 17;
-nK = 50;
-nE = 50;
+nK = 75;
+nE = 75;
 T = 10000;
 [P,lnAgrid] = rouwen(rrho_z,0,ssigma_z/sqrt(1-rrho_z^2),nA);
 Anodes = exp(lnAgrid);
 P = P';
 min_lnA = lnAgrid(1); max_lnA = lnAgrid(end);
-min_K = 10; max_K = 50;
-min_E = 10; max_E = 50;
+min_K = 1; max_K = 50;
+min_E = 1; max_E = 50;
 damp_factor = 0.1;
 maxiter = 10000;
-tol = 1e-6;
+tol = 1e-3;
 options = optimoptions(@fsolve,'Display','none','Jacobian','off');
 
 %% Grid creaton
@@ -57,8 +57,8 @@ EMKval_temp = EMKval; EMEval_temp = EMEval;
 % 	tot_stuff(i) = a*k^aalpha*n^(1-aalpha) + (1-ddelta)*k + z*(1-n);
 % 	ustuff(i) = xxi*(1-n)^(1-eeta);
 % end
-if (exist('PEA_Em_FEM.mat','file'))
-	load('PEA_Em_FEM.mat','EMKval','EMEval');
+if (exist('FEM_PEA_simple.mat','file'))
+	load('FEM_PEA_simple.mat','EMKval','EMEval');
 else
 	EMKval = zeros(nA,nK,nE); EMEval = EMKval;
 	EMKval_temp = EMKval; EMEval_temp = EMEval;
@@ -85,7 +85,7 @@ end
 
 %% Iteration
 diff = 10; iter = 0;
-while (diff>tol && iter <= maxiter)
+while (diff>damp_factor*tol && iter <= maxiter)
 	% Pack grids, very important
 	grids.EMKval = EMKval;
 	grids.EMEval = EMEval;
@@ -143,7 +143,7 @@ i_k = ceil(nK-5);
 i_E = ceil(nE-5);
 for i_A = 1:length(Anodes)
 	state(1) = Anodes(i_A); state(3) = Enodes(i_E);
-	state(2) = Knodes(i_k);
+	state(2) = Knodes(i_k); e = state(3);
 	control = state2control_FEM_simple(state,i_A,grids,param);
 	kplus_high(i_A) = control.kplus;
 	q_high(i_A) = control.q;
@@ -155,7 +155,7 @@ i_k = ceil(5);
 i_E = ceil(5);
 for i_A = 1:length(Anodes)
 	state(1) = Anodes(i_A); state(3) = Enodes(i_E);
-	state(2) = Knodes(i_k);
+	state(2) = Knodes(i_k); e = state(3);
 	control = state2control_FEM_simple(state,i_A,grids,param);
 	kplus_low(i_A) = control.kplus;
 	q_low(i_A) = control.q;
