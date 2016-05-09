@@ -11,10 +11,11 @@ mypara_simple;
 nA = 17;
 nK = 75;
 nE = 75;
-T = 10000;
+T = 100000;
 [P,lnAgrid] = rouwen(rrho_z,0,ssigma_z/sqrt(1-rrho_z^2),nA);
 Anodes = exp(lnAgrid);
 P = P';
+P_cdf = cumsum(P,2);
 min_lnA = lnAgrid(1); max_lnA = lnAgrid(end);
 min_K = 1; max_K = 50;
 min_E = 1; max_E = 50;
@@ -30,6 +31,8 @@ ln_egrid = linspace(log(min_E),log(max_E),nE);
 Enodes = exp(ln_egrid);
 N = nA*nK*nE;
 [Kmesh,Amesh,Nmesh] = meshgrid(Knodes,Anodes,Enodes);
+grids.P_cdf = P_cdf;
+grids.Anodes = Anodes;
 
 % %% Encapsulate all parameters
 % param = [... 
@@ -165,6 +168,301 @@ end
 
 plot(Anodes,CIPI_low,'-b',Anodes,CIPI_high,'-.r')
 
+%% Simulation
+P_cdf = cumsum(P,2);
+aindexsim = zeros(1,T); aindexsim(1) = ceil(nA/2);
+ksim = kbar*ones(1,T); esim = ebar*ones(1,T);
+asim = ones(1,T); ysim = ones(1,T); qsim = zeros(1,T);
+% tthetasim = zeros(1,T); vsim = zeros(1,T); usim = zeros(1,T);
+for t = 1:T
+    asim(t) = Anodes(aindexsim(t)); a = asim(t);
+    k = ksim(t); e = esim(t);
+	state = [a k e];
+	y = a*k^aalpha;
+	ysim(t) = y;
+	
+	control = state2control_FEM_simple(state,aindexsim(t),grids,param);
+    qsim(t) = control.q;
+	
+    if t <= T-1
+        uu = rand;
+        aindexsim(t+1) = find(P_cdf(aindexsim(t),:)>=uu,1,'first');
+        ksim(t+1) = control.kplus;
+        esim(t+1) = control.eplus;
+    end
+end
+
+%% Generalized IRF, -2 ssigma shock
+peak_select = ysim > prctile(ysim,95);
+trough_select = ysim < prctile(ysim,5);
+peak_inits(1,:) = asim(peak_select);
+peak_inits(2,:) = ksim(peak_select);
+peak_inits(3,:) = esim(peak_select);
+peak_aidx = aindexsim(peak_select);
+trough_inits(1,:) = asim(trough_select);
+trough_inits(2,:) = ksim(trough_select);
+trough_inits(3,:) = esim(trough_select);
+trough_aidx = aindexsim(trough_select);
+periods = 40;
+
+parfor i = 1:length(peak_aidx)
+	impulse_panel(i,:,:) = simforward_A(peak_inits(:,i),peak_aidx(i),-2,periods,grids,param);
+	control_panel(i,:,:) = simforward_A(peak_inits(:,i),peak_aidx(i),0,periods,grids,param);
+	GIRF_panel(i,:,:) = impulse_panel(i,:,:)-control_panel(i,:,:);
+end
+GIRF_peak_badshock = squeeze(mean(GIRF_panel));
+
+parfor i = 1:length(trough_aidx)
+	impulse_panel(i,:,:) = simforward_A(trough_inits(:,i),trough_aidx(i),-2,periods,grids,param);
+	control_panel(i,:,:) = simforward_A(trough_inits(:,i),trough_aidx(i),0,periods,grids,param);
+	GIRF_panel(i,:,:) = impulse_panel(i,:,:)-control_panel(i,:,:);
+end
+GIRF_trough_badshock = squeeze(mean(GIRF_panel));
+
+figure
+plot(1:periods+1,GIRF_peak_badshock(1,:),'LineWidth',3)
+hold on
+plot(1:periods+1,GIRF_trough_badshock(1,:),'r-.','LineWidth',3)
+legend('Peak','Trough')
+title('CIPI, 2 std negative TFP shock')
+set(gca,'FontSize',14,'fontWeight','bold')
+print('statedependency_CIPI_minustwoshock','-depsc2')
+
+figure
+plot(1:periods+1,GIRF_peak_badshock(2,:),'LineWidth',3)
+hold on
+plot(1:periods+1,GIRF_trough_badshock(2,:),'r-.','LineWidth',3)
+legend('Peak','Trough')
+title('GDP, 2 std negative TFP shock')
+set(gca,'FontSize',14,'fontWeight','bold')
+print('statedependency_GDP_minustwoshock','-depsc2')
+
+figure
+plot(1:periods+1,GIRF_peak_badshock(3,:),'LineWidth',3)
+hold on
+plot(1:periods+1,GIRF_trough_badshock(3,:),'r-.','LineWidth',3)
+legend('Peak','Trough')
+title('CIPI/GDP, 2 std negative TFP shock')
+set(gca,'FontSize',14,'fontWeight','bold')
+print('statedependency_share_minustwoshock','-depsc2')
+
+figure
+plot(1:periods+1,GIRF_peak_badshock(4,:),'LineWidth',3)
+hold on
+plot(1:periods+1,GIRF_trough_badshock(4,:),'r-.','LineWidth',3)
+legend('Peak','Trough')
+title('Buy Prob., 2 std negative TFP shock')
+set(gca,'FontSize',14,'fontWeight','bold')
+print('statedependency_q_minustwoshock','-depsc2')
+
+figure
+plot(1:periods+1,GIRF_peak_badshock(5,:),'LineWidth',3)
+hold on
+plot(1:periods+1,GIRF_trough_badshock(5,:),'r-.','LineWidth',3)
+legend('Peak','Trough')
+title('Sell Prob., 2 std negative TFP shock')
+set(gca,'FontSize',14,'fontWeight','bold')
+print('statedependency_f_minustwoshock','-depsc2')
+
+figure
+plot(1:periods+1,GIRF_peak_badshock(6,:),'LineWidth',3)
+hold on
+plot(1:periods+1,GIRF_trough_badshock(6,:),'r-.','LineWidth',3)
+legend('Peak','Trough')
+title('Demand, 2 std negative TFP shock')
+set(gca,'FontSize',14,'fontWeight','bold')
+print('statedependency_v_minustwoshock','-depsc2')
+
+%% Generalized IRF, +2 ssigma shock
+peak_select = ysim > prctile(ysim,95);
+trough_select = ysim < prctile(ysim,5);
+peak_inits(1,:) = asim(peak_select);
+peak_inits(2,:) = ksim(peak_select);
+peak_inits(3,:) = esim(peak_select);
+peak_aidx = aindexsim(peak_select);
+trough_inits(1,:) = asim(trough_select);
+trough_inits(2,:) = ksim(trough_select);
+trough_inits(3,:) = esim(trough_select);
+trough_aidx = aindexsim(trough_select);
+periods = 40;
+
+parfor i = 1:length(peak_aidx)
+	impulse_panel(i,:,:) = simforward_A(peak_inits(:,i),peak_aidx(i),2,periods,grids,param);
+	control_panel(i,:,:) = simforward_A(peak_inits(:,i),peak_aidx(i),0,periods,grids,param);
+	GIRF_panel(i,:,:) = impulse_panel(i,:,:)-control_panel(i,:,:);
+end
+GIRF_peak_goodshock = squeeze(mean(GIRF_panel));
+
+parfor i = 1:length(trough_aidx)
+	impulse_panel(i,:,:) = simforward_A(trough_inits(:,i),trough_aidx(i),2,periods,grids,param);
+	control_panel(i,:,:) = simforward_A(trough_inits(:,i),trough_aidx(i),0,periods,grids,param);
+	GIRF_panel(i,:,:) = impulse_panel(i,:,:)-control_panel(i,:,:);
+end
+GIRF_trough_goodshock = squeeze(mean(GIRF_panel));
+
+figure
+plot(1:periods+1,GIRF_peak_goodshock(1,:),'LineWidth',3)
+hold on
+plot(1:periods+1,GIRF_trough_goodshock(1,:),'r-.','LineWidth',3)
+legend('Peak','Trough')
+title('CIPI, 2 std positive TFP shock')
+set(gca,'FontSize',14,'fontWeight','bold')
+print('statedependency_CIPI_plustwoshock','-depsc2')
+
+figure
+plot(1:periods+1,GIRF_peak_goodshock(2,:),'LineWidth',3)
+hold on
+plot(1:periods+1,GIRF_trough_goodshock(2,:),'r-.','LineWidth',3)
+legend('Peak','Trough')
+title('GDP, 2 std positive TFP shock')
+set(gca,'FontSize',14,'fontWeight','bold')
+print('statedependency_GDP_plustwoshock','-depsc2')
+
+figure
+plot(1:periods+1,GIRF_peak_goodshock(3,:),'LineWidth',3)
+hold on
+plot(1:periods+1,GIRF_trough_goodshock(3,:),'r-.','LineWidth',3)
+legend('Peak','Trough')
+title('CIPI/GDP, 2 std positive TFP shock')
+set(gca,'FontSize',14,'fontWeight','bold')
+print('statedependency_share_plustwoshock','-depsc2')
+
+figure
+plot(1:periods+1,GIRF_peak_goodshock(4,:),'LineWidth',3)
+hold on
+plot(1:periods+1,GIRF_trough_goodshock(4,:),'r-.','LineWidth',3)
+legend('Peak','Trough')
+title('Buy Prob., 2 std positive TFP shock')
+set(gca,'FontSize',14,'fontWeight','bold')
+print('statedependency_q_plustwoshock','-depsc2')
+
+figure
+plot(1:periods+1,GIRF_peak_goodshock(5,:),'LineWidth',3)
+hold on
+plot(1:periods+1,GIRF_trough_goodshock(5,:),'r-.','LineWidth',3)
+legend('Peak','Trough')
+title('Sell Prob., 2 std positive TFP shock')
+set(gca,'FontSize',14,'fontWeight','bold')
+print('statedependency_f_plustwoshock','-depsc2')
+
+figure
+plot(1:periods+1,GIRF_peak_goodshock(6,:),'LineWidth',3)
+hold on
+plot(1:periods+1,GIRF_trough_goodshock(6,:),'r-.','LineWidth',3)
+legend('Peak','Trough')
+title('Demand, 2 std positive TFP shock')
+set(gca,'FontSize',14,'fontWeight','bold')
+print('statedependency_v_plustwoshock','-depsc2')
+%% Generalized IRF, +2/-2 ssigma shock at peak
+figure
+plot(1:periods+1,GIRF_peak_goodshock(1,:),'LineWidth',3)
+hold on
+plot(1:periods+1,GIRF_peak_badshock(1,:),'r-.','LineWidth',3)
+legend('+2 Std Shock','-2 Std Shock')
+title('CIPI, At the Peak')
+set(gca,'FontSize',14,'fontWeight','bold')
+print('asymmetry_CIPI_peak','-depsc2')
+
+figure
+plot(1:periods+1,GIRF_peak_goodshock(2,:),'LineWidth',3)
+hold on
+plot(1:periods+1,GIRF_peak_badshock(2,:),'r-.','LineWidth',3)
+legend('+2 Std Shock','-2 Std Shock')
+title('GDP, At the Peak')
+set(gca,'FontSize',14,'fontWeight','bold')
+print('asymmetry_GDP_peak','-depsc2')
+
+figure
+plot(1:periods+1,GIRF_peak_goodshock(3,:),'LineWidth',3)
+hold on
+plot(1:periods+1,GIRF_peak_badshock(3,:),'r-.','LineWidth',3)
+legend('+2 Std Shock','-2 Std Shock')
+title('CIPI/GDP, At the Peak')
+set(gca,'FontSize',14,'fontWeight','bold')
+print('asymmetry_share_peak','-depsc2')
+
+figure
+plot(1:periods+1,GIRF_peak_goodshock(4,:),'LineWidth',3)
+hold on
+plot(1:periods+1,GIRF_peak_badshock(4,:),'r-.','LineWidth',3)
+legend('+2 Std Shock','-2 Std Shock')
+title('Buy Prob., At the Peak')
+set(gca,'FontSize',14,'fontWeight','bold')
+print('asymmetry_q_peak','-depsc2')
+
+figure
+plot(1:periods+1,GIRF_peak_goodshock(5,:),'LineWidth',3)
+hold on
+plot(1:periods+1,GIRF_peak_badshock(5,:),'r-.','LineWidth',3)
+legend('+2 Std Shock','-2 Std Shock')
+title('Sell Prob., At the Peak')
+set(gca,'FontSize',14,'fontWeight','bold')
+print('asymmetry_f_peak','-depsc2')
+
+figure
+plot(1:periods+1,GIRF_peak_goodshock(6,:),'LineWidth',3)
+hold on
+plot(1:periods+1,GIRF_peak_badshock(6,:),'r-.','LineWidth',3)
+legend('+2 Std Shock','-2 Std Shock')
+title('Demand, At the Peak')
+set(gca,'FontSize',14,'fontWeight','bold')
+print('asymmetry_v_peak','-depsc2')
+
+%% Generalized IRF, +2/-2 ssigma shock at trough
+figure
+plot(1:periods+1,GIRF_trough_goodshock(1,:),'LineWidth',3)
+hold on
+plot(1:periods+1,GIRF_trough_badshock(1,:),'r-.','LineWidth',3)
+legend('+2 Std Shock','-2 Std Shock')
+title('CIPI, At the trough')
+set(gca,'FontSize',14,'fontWeight','bold')
+print('asymmetry_CIPI_trough','-depsc2')
+
+figure
+plot(1:periods+1,GIRF_trough_goodshock(2,:),'LineWidth',3)
+hold on
+plot(1:periods+1,GIRF_trough_badshock(2,:),'r-.','LineWidth',3)
+legend('+2 Std Shock','-2 Std Shock')
+title('GDP, At the trough')
+set(gca,'FontSize',14,'fontWeight','bold')
+print('asymmetry_GDP_trough','-depsc2')
+
+figure
+plot(1:periods+1,GIRF_trough_goodshock(3,:),'LineWidth',3)
+hold on
+plot(1:periods+1,GIRF_trough_badshock(3,:),'r-.','LineWidth',3)
+legend('+2 Std Shock','-2 Std Shock')
+title('CIPI/GDP, At the trough')
+set(gca,'FontSize',14,'fontWeight','bold')
+print('asymmetry_share_trough','-depsc2')
+
+figure
+plot(1:periods+1,GIRF_trough_goodshock(4,:),'LineWidth',3)
+hold on
+plot(1:periods+1,GIRF_trough_badshock(4,:),'r-.','LineWidth',3)
+legend('+2 Std Shock','-2 Std Shock')
+title('Buy Prob., At the Trough')
+set(gca,'FontSize',14,'fontWeight','bold')
+print('asymmetry_q_trough','-depsc2')
+
+figure
+plot(1:periods+1,GIRF_trough_goodshock(5,:),'LineWidth',3)
+hold on
+plot(1:periods+1,GIRF_trough_badshock(5,:),'r-.','LineWidth',3)
+legend('+2 Std Shock','-2 Std Shock')
+title('Sell Prob., At the Trough')
+set(gca,'FontSize',14,'fontWeight','bold')
+print('asymmetry_f_trough','-depsc2')
+
+figure
+plot(1:periods+1,GIRF_trough_goodshock(6,:),'LineWidth',3)
+hold on
+plot(1:periods+1,GIRF_trough_badshock(6,:),'r-.','LineWidth',3)
+legend('+2 Std Shock','-2 Std Shock')
+title('Demand, At the Trough')
+set(gca,'FontSize',14,'fontWeight','bold')
+print('asymmetry_v_trough','-depsc2')
+
 %% Euler equation error
 nk_ee = 60; nnn_ee = 60;
 Kgrid = linspace(0.5*k_ss,1.5*k_ss,nk_ee);
@@ -252,31 +550,6 @@ EEerror_v_inf = norm(EEerror_v(:),inf)
 
 EEerror_c_mean = mean(EEerror_c(:));
 EEerror_v_mean = mean(EEerror_v(:));
-
-%% Simulation
-P_cdf = cumsum(P,2);
-aindexsim = zeros(1,T); aindexsim(1) = ceil(nA/2);
-ksim = kbar*ones(1,T); esim = ebar*ones(1,T);
-asim = ones(1,T);
-% tthetasim = zeros(1,T); vsim = zeros(1,T); usim = zeros(1,T);
-for t = 1:T
-    asim(t) = Anodes(aindexsim(t)); a = asim(t);
-    k = ksim(t); e = esim(t);
-	state = [a k e];
-	
-	control = state2control_FEM_simple(state,aindexsim(t),grids,param);
-    
-    if t <= T-1
-        uu = rand;
-        aindexsim(t+1) = find(P_cdf(aindexsim(t),:)>=uu,1,'first');
-        ksim(t+1) = control.kplus;
-        esim(t+1) = control.eplus;
-    end
-end
-
-[~,ttheta_cyc] = hpfilter(log(tthetasim),12^2*100);
-[~,u_cyc] = hpfilter(log(usim),12^2*100);
-[~,v_cyc] = hpfilter(log(vsim),12^2*100);
 
 %% Export results
 mkdir('results')

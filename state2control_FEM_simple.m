@@ -1,4 +1,4 @@
-function control = state2control_FEM(state,i_a,grids,param)
+function control = state2control_FEM_simple(state,i_a,grids,param)
 % state = A, k, e
 % coeff_me/mk are all coefficients
 % param a container of parameters
@@ -66,5 +66,7 @@ control.eplus = eplus;
 control.mk = mk;
 control.me = me;
 control.q = q;
+control.f = f;
+control.v = v;
 
 end

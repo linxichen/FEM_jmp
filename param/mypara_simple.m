@@ -74,6 +74,8 @@ param.iiota = iiota;
 param.aalpha = aalpha;
 param.gyratio = gyratio;
 param.ddelta = ddelta;
+param.rrho_z = rrho_z;
+param.ssigma_z = ssigma_z;
 
 % save 'param.mat';
 
