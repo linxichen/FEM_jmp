@@ -46,19 +46,21 @@ else
 	f = 0;
 end
 U = 1-(kkappa_S/q+kkappa_F)*(f+(1-f)/ttau)-h;
+wedge = 1- kkappa_S/ttau/q-kkappa_F/ttau;
 
 y = A*k^aalpha;
 v = ttheta*(e);
 m = v*(e)/(v^iiota+(e)^iiota)^(1/iiota);
 
 % Find mk and me;
-mk = (1-ddelta+U*aalpha*y/k)/c;
+mk = (1-ddelta+wedge*aalpha*y/k)/c;
 me = U/c;
 
 % Find next state
 eplus = e + y - m;
 I = y-c+e-eplus-kkappa_S*v-kkappa_F*m-e*h;
 kplus = (1-ddelta)*k + I;
+R = y/k*aalpha*wedge;
 
 % pack stuff into control
 control.kplus = kplus;
@@ -68,5 +70,6 @@ control.me = me;
 control.q = q;
 control.f = f;
 control.v = v;
+control.R = R;
 
 end
