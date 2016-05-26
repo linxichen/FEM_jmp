@@ -166,6 +166,7 @@ for i_A = 1:length(Anodes)
 	CIPI_low(i_A) = eplus - e;
 end
 
+figure
 plot(Anodes,CIPI_low,'-b',Anodes,CIPI_high,'-.r')
 
 %% Simulation
@@ -192,7 +193,7 @@ for t = 1:T
     end
 end
 
-%% Generalized IRF, -2 ssigma shock
+%% Select from Simulation initial states
 peak_select = ysim > prctile(ysim,95);
 trough_select = ysim < prctile(ysim,5);
 peak_inits(1,:) = asim(peak_select);
@@ -203,22 +204,43 @@ trough_inits(1,:) = asim(trough_select);
 trough_inits(2,:) = ksim(trough_select);
 trough_inits(3,:) = esim(trough_select);
 trough_aidx = aindexsim(trough_select);
+
+%% Generalized IRF, -2 ssigma shock
 periods = 40;
+impulse = -2;
 
 parfor i = 1:length(peak_aidx)
-	impulse_panel(i,:,:) = simforward_A(peak_inits(:,i),peak_aidx(i),-2,periods,grids,param);
-	control_panel(i,:,:) = simforward_A(peak_inits(:,i),peak_aidx(i),0,periods,grids,param);
+	impulse_panel(i,:,:) = simforward_A(peak_inits(:,i),peak_aidx(i),impulse,periods,grids,param);
+	control_panel(i,:,:) = simforward_A(peak_inits(:,i),peak_aidx(i),randn,periods,grids,param);
 	GIRF_panel(i,:,:) = impulse_panel(i,:,:)-control_panel(i,:,:);
 end
 GIRF_peak_badshock = squeeze(mean(GIRF_panel));
 
 parfor i = 1:length(trough_aidx)
-	impulse_panel(i,:,:) = simforward_A(trough_inits(:,i),trough_aidx(i),-2,periods,grids,param);
-	control_panel(i,:,:) = simforward_A(trough_inits(:,i),trough_aidx(i),0,periods,grids,param);
+	impulse_panel(i,:,:) = simforward_A(trough_inits(:,i),trough_aidx(i),impulse,periods,grids,param);
+	control_panel(i,:,:) = simforward_A(trough_inits(:,i),trough_aidx(i),randn,periods,grids,param);
 	GIRF_panel(i,:,:) = impulse_panel(i,:,:)-control_panel(i,:,:);
 end
 GIRF_trough_badshock = squeeze(mean(GIRF_panel));
 
+%% Generalized IRF, +2 ssigma shock
+impulse = +2;
+
+parfor i = 1:length(peak_aidx)
+	impulse_panel(i,:,:) = simforward_A(peak_inits(:,i),peak_aidx(i),impluse,periods,grids,param);
+	control_panel(i,:,:) = simforward_A(peak_inits(:,i),peak_aidx(i),randn,periods,grids,param);
+	GIRF_panel(i,:,:) = impulse_panel(i,:,:)-control_panel(i,:,:);
+end
+GIRF_peak_goodshock = squeeze(mean(GIRF_panel));
+
+parfor i = 1:length(trough_aidx)
+	impulse_panel(i,:,:) = simforward_A(trough_inits(:,i),trough_aidx(i),impulse,periods,grids,param);
+	control_panel(i,:,:) = simforward_A(trough_inits(:,i),trough_aidx(i),randn,periods,grids,param);
+	GIRF_panel(i,:,:) = impulse_panel(i,:,:)-control_panel(i,:,:);
+end
+GIRF_trough_goodshock = squeeze(mean(GIRF_panel));
+
+%% Plotting
 figure
 plot(1:periods+1,GIRF_peak_badshock(1,:),'LineWidth',3)
 hold on
@@ -273,32 +295,7 @@ title('Demand, 2 std negative TFP shock')
 set(gca,'FontSize',14,'fontWeight','bold')
 print('statedependency_v_minustwoshock','-depsc2')
 
-%% Generalized IRF, +2 ssigma shock
-peak_select = ysim > prctile(ysim,95);
-trough_select = ysim < prctile(ysim,5);
-peak_inits(1,:) = asim(peak_select);
-peak_inits(2,:) = ksim(peak_select);
-peak_inits(3,:) = esim(peak_select);
-peak_aidx = aindexsim(peak_select);
-trough_inits(1,:) = asim(trough_select);
-trough_inits(2,:) = ksim(trough_select);
-trough_inits(3,:) = esim(trough_select);
-trough_aidx = aindexsim(trough_select);
-periods = 40;
 
-parfor i = 1:length(peak_aidx)
-	impulse_panel(i,:,:) = simforward_A(peak_inits(:,i),peak_aidx(i),2,periods,grids,param);
-	control_panel(i,:,:) = simforward_A(peak_inits(:,i),peak_aidx(i),0,periods,grids,param);
-	GIRF_panel(i,:,:) = impulse_panel(i,:,:)-control_panel(i,:,:);
-end
-GIRF_peak_goodshock = squeeze(mean(GIRF_panel));
-
-parfor i = 1:length(trough_aidx)
-	impulse_panel(i,:,:) = simforward_A(trough_inits(:,i),trough_aidx(i),2,periods,grids,param);
-	control_panel(i,:,:) = simforward_A(trough_inits(:,i),trough_aidx(i),0,periods,grids,param);
-	GIRF_panel(i,:,:) = impulse_panel(i,:,:)-control_panel(i,:,:);
-end
-GIRF_trough_goodshock = squeeze(mean(GIRF_panel));
 
 figure
 plot(1:periods+1,GIRF_peak_goodshock(1,:),'LineWidth',3)
