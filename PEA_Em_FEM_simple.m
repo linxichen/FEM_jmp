@@ -11,7 +11,7 @@ mypara_simple;
 nA = 17;
 nK = 75;
 nE = 75;
-T = 1e6;
+T = 5e6;
 [P,lnAgrid] = rouwen(rrho_z,0,ssigma_z/sqrt(1-rrho_z^2),nA);
 Anodes = exp(lnAgrid);
 P = P';
@@ -226,10 +226,10 @@ end
 GIRF_trough_badshock = squeeze(mean(GIRF_panel));
 
 %% Generalized IRF, +2 ssigma shock
-impulse = +2;
+impulse = 2;
 
 parfor i = 1:length(peak_aidx)
-	impulse_panel(i,:,:) = simforward_A(peak_inits(:,i),peak_aidx(i),impluse,periods,grids,param);
+	impulse_panel(i,:,:) = simforward_A(peak_inits(:,i),peak_aidx(i),impulse,periods,grids,param);
 	control_panel(i,:,:) = simforward_A(peak_inits(:,i),peak_aidx(i),randn,periods,grids,param);
 	GIRF_panel(i,:,:) = impulse_panel(i,:,:)-control_panel(i,:,:);
 end
@@ -242,25 +242,57 @@ parfor i = 1:length(trough_aidx)
 end
 GIRF_trough_goodshock = squeeze(mean(GIRF_panel));
 
-%% Plotting
+%% Plotting conditional on state
 plotperiods = 20;
+% CIPI
 figure
-plot(1:plotperiods+1,GIRF_peak_badshock(1,1:plotperiods+1)./GIRF_trough_badshock(1,1:plotperiods+1),'LineWidth',3)
+plot(1:plotperiods+1,GIRF_peak_badshock(1,1:plotperiods+1),'LineWidth',3)
 hold on
-plot(1:plotperiods+1,GIRF_peak_goodshock(1,1:plotperiods+1)./GIRF_trough_goodshock(1,1:plotperiods+1),'r-.','LineWidth',3)
+plot(1:plotperiods+1,GIRF_peak_goodshock(1,1:plotperiods+1),'r-.','LineWidth',3)
+xlabel('Periods From Impact')
+ylabel('Generalized IRF, Level')
 legend('-2 Std TFP Shock','+2 Std TFP Good Shock')
-title('CIPI Response, Ratio Peak vs Trough')
+title('CIPI Response, At Peak')
 set(gca,'FontSize',14,'fontWeight','bold')
-print('./figures/statedependency_CIPI_twoshocks','-depsc2')
+print('./figures/statedependency_CIPI_peak_levels','-depsc2')
 
 figure
-plot(1:plotperiods+1,GIRF_peak_badshock(2,1:plotperiods+1)./GIRF_trough_badshock(2,1:plotperiods+1),'LineWidth',3)
+plot(1:plotperiods+1,...
+	 abs(GIRF_peak_badshock(1,1:plotperiods+1))./...
+	 abs(GIRF_peak_goodshock(1,1:plotperiods+1)),...
+	 'LineWidth',3)
 hold on
-plot(1:plotperiods+1,GIRF_peak_goodshock(2,1:plotperiods+1)./GIRF_trough_goodshock(2,1:plotperiods+1),'r-.','LineWidth',3)
+legend('Ratio at Peak')
+xlabel('Periods From Impact')
+ylabel('Ratio, -2 Shock/+2 Shock')
+title('CIPI Response, Ratio Peak vs Trough')
+set(gca,'FontSize',14,'fontWeight','bold')
+print('./figures/statedependency_CIPI_peak_ratio','-depsc2')
+
+% GDP
+figure
+plot(1:plotperiods+1,GIRF_peak_badshock(2,1:plotperiods+1),'LineWidth',3)
+hold on
+plot(1:plotperiods+1,GIRF_peak_goodshock(2,1:plotperiods+1),'r-.','LineWidth',3)
+xlabel('Periods From Impact')
+ylabel('Generalized IRF, Level')
 legend('-2 Std TFP Shock','+2 Std TFP Good Shock')
+title('GDP Response, At Peak')
+set(gca,'FontSize',14,'fontWeight','bold')
+print('./figures/statedependency_GDP_peak_levels','-depsc2')
+
+figure
+plot(1:plotperiods+1,...
+	 abs(GIRF_peak_badshock(2,1:plotperiods+1))./...
+	 abs(GIRF_peak_goodshock(2,1:plotperiods+1)),...
+	 'LineWidth',3)
+hold on
+legend('Ratio at Peak')
+xlabel('Periods From Impact')
+ylabel('Ratio, -2 Shock/+2 Shock')
 title('GDP Response, Ratio Peak vs Trough')
 set(gca,'FontSize',14,'fontWeight','bold')
-print('./figures/statedependency_GDP_twoshocks','-depsc2')
+print('./figures/statedependency_GDP_peak_ratio','-depsc2')
 
 figure
 plot(1:plotperiods+1,GIRF_peak_badshock(2,1:plotperiods+1)-GIRF_peak_badshock(2,1:1),'LineWidth',3)
@@ -289,6 +321,83 @@ title('CIPI/GDP, 2 std negative TFP shock')
 set(gca,'FontSize',14,'fontWeight','bold')
 print('./figures/statedependency_share_minustwoshock','-depsc2')
 
+% buying prob., q
+figure
+plot(1:plotperiods+1,GIRF_peak_badshock(4,1:plotperiods+1),'LineWidth',3)
+hold on
+plot(1:plotperiods+1,GIRF_peak_goodshock(4,1:plotperiods+1),'r-.','LineWidth',3)
+xlabel('Periods From Impact')
+ylabel('Generalized IRF, Level')
+legend('-2 Std TFP Shock','+2 Std TFP Good Shock')
+title('Buy Prob. Response, At Peak')
+set(gca,'FontSize',14,'fontWeight','bold')
+print('./figures/statedependency_q_peak_levels','-depsc2')
+
+figure
+plot(1:plotperiods+1,...
+	 abs(GIRF_peak_badshock(4,1:plotperiods+1))./...
+	 abs(GIRF_peak_goodshock(4,1:plotperiods+1)),...
+	 'LineWidth',3)
+hold on
+legend('Ratio at Peak')
+xlabel('Periods From Impact')
+ylabel('Ratio, -2 Shock/+2 Shock')
+title('Buy Prob. Response, Ratio Peak vs Trough')
+set(gca,'FontSize',14,'fontWeight','bold')
+print('./figures/statedependency_q_peak_ratio','-depsc2')
+
+% selling prob., f
+figure
+plot(1:plotperiods+1,GIRF_peak_badshock(5,1:plotperiods+1),'LineWidth',3)
+hold on
+plot(1:plotperiods+1,GIRF_peak_goodshock(5,1:plotperiods+1),'r-.','LineWidth',3)
+xlabel('Periods From Impact')
+ylabel('Generalized IRF, Level')
+legend('-2 Std TFP Shock','+2 Std TFP Good Shock')
+title('Sell Prob. Response, At Peak')
+set(gca,'FontSize',14,'fontWeight','bold')
+print('./figures/statedependency_f_peak_levels','-depsc2')
+
+figure
+plot(1:plotperiods+1,...
+	 abs(GIRF_peak_badshock(5,1:plotperiods+1))./...
+	 abs(GIRF_peak_goodshock(5,1:plotperiods+1)),...
+	 'LineWidth',3)
+hold on
+legend('Ratio at Peak')
+xlabel('Periods From Impact')
+ylabel('Ratio, -2 Shock/+2 Shock')
+title('Sell Prob. Response, Ratio Peak vs Trough')
+set(gca,'FontSize',14,'fontWeight','bold')
+print('./figures/statedependency_f_peak_ratio','-depsc2')
+
+% Demand, V
+figure
+plot(1:plotperiods+1,GIRF_peak_badshock(6,1:plotperiods+1),'LineWidth',3)
+hold on
+plot(1:plotperiods+1,GIRF_peak_goodshock(6,1:plotperiods+1),'r-.','LineWidth',3)
+xlabel('Periods From Impact')
+ylabel('Generalized IRF, Level')
+legend('-2 Std TFP Shock','+2 Std TFP Good Shock')
+title('Demand Response, At Peak')
+set(gca,'FontSize',14,'fontWeight','bold')
+print('./figures/statedependency_V_peak_levels','-depsc2')
+
+%% old stuff, stop above
+figure
+plot(1:plotperiods+1,...
+	 abs(GIRF_peak_badshock(6,1:plotperiods+1))./...
+	 abs(GIRF_peak_goodshock(6,1:plotperiods+1)),...
+	 'LineWidth',3)
+hold on
+legend('Ratio at Peak')
+xlabel('Periods From Impact')
+ylabel('Ratio, -2 Shock/+2 Shock')
+title('Demand Response, Ratio Peak vs Trough')
+set(gca,'FontSize',14,'fontWeight','bold')
+print('./figures/statedependency_V_peak_ratio','-depsc2')
+
+% old q
 plotperiods = 15;
 figure
 plot(1:plotperiods+1,GIRF_peak_badshock(4,1:plotperiods+1)./GIRF_trough_badshock(4,1:plotperiods+1),'LineWidth',3)
