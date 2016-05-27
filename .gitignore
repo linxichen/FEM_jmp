@@ -14,3 +14,5 @@ Dynare/dmp_dsge_static.m
 Dynare/dmp_dsge.log
 
 Dynare/dmp_dsge.m
+
+*.swp

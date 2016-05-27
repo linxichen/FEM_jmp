@@ -11,7 +11,7 @@ mypara_simple;
 nA = 17;
 nK = 75;
 nE = 75;
-T = 5e6;
+T = 1e6;
 [P,lnAgrid] = rouwen(rrho_z,0,ssigma_z/sqrt(1-rrho_z^2),nA);
 Anodes = exp(lnAgrid);
 P = P';
@@ -37,7 +37,7 @@ grids.P_cdf = P_cdf;
 grids.Anodes = Anodes;
 
 % %% Encapsulate all parameters
-% param = [... 
+% param = [...
 %  bbeta; % 1
 %  ggamma; % 2
 %  kkappa; % 3
@@ -72,19 +72,19 @@ else
 	coeff_lnmk(2) = -0.129812218799966;
 	coeff_lnmk(3) = -0.406510500200686;
 	coeff_lnmk(4) = -0.115089098685107;
-	
+
 	coeff_lnme(1) = 0.787865722488784;
 	coeff_lnme(2) = -0.186393266814723;
 	coeff_lnme(3) = -0.366080221457789;
 	coeff_lnme(4) = -0.109767893578230;
 	parfor i = 1:N
 		[i_a,i_k,i_e] = ind2sub([nA,nK,nE],i);
-		a = Anodes(i_a); k  = Knodes(i_k); e = Enodes(i_e);
+		a = Anodes(i_a); k  = Knodes(i_k); e = Enodes(i_e); %#ok<*PFBNS>
 		EMKval(i) = exp([1 log(a) log(k) log(e)]*coeff_lnmk);
 		EMEval(i) = exp([1 log(a) log(k) log(e)]*coeff_lnme);
 	end
 end
-	
+
 
 
 
@@ -96,48 +96,48 @@ while (diff>damp_factor*tol && iter <= maxiter)
 	grids.EMEval = EMEval;
 	grids.Knodes = Knodes;
 	grids.Enodes = Enodes;
-	
+
     %% Time iter step, uses endo grid technique
     parfor i = 1:N
-		
+
         [i_a,i_k,i_e] = ind2sub([nA,nK,nE],i);
         e = Enodes(i_e); k = Knodes(i_k); A = Anodes(i_a);
 		state = [A k e];
-		
+
 		% Find current control vars
 		control = state2control_FEM_simple(state,i_a,grids,param);
 		kplus = control.kplus;
 		eplus = control.eplus;
-		
+
 		% Find the expected EM
         EMK_hat = 0; EME_hat = 0;
         for i_node = 1:nA
             aplus = Anodes(i_node);
 			stateplus = [aplus kplus eplus];
 			control_plus = state2control_FEM_simple(stateplus,i_node,grids,param);
-			
+
 			EMK_hat = EMK_hat + P(i_a,i_node)*control_plus.mk;
 			EME_hat = EME_hat + P(i_a,i_node)*control_plus.me;
         end
-        
+
         EMKval_temp(i) = EMK_hat;
         EMEval_temp(i) = EME_hat;
     end
-    
+
     %% Damped update
     EMKval_new = (damp_factor)*EMKval_temp+(1-damp_factor)*EMKval;
     EMEval_new = (damp_factor)*EMEval_temp+(1-damp_factor)*EMEval;
-    
+
     %% Compute norm
     diff = norm([EMKval(:);EMEval(:)]-[EMKval_new(:);EMEval_new(:)],Inf);
-    
+
     %% Update
     EMKval = EMKval_new;
     EMEval = EMEval_new;
     iter = iter+1;
     %% Display something
-    iter
-    diff
+    disp(iter);
+    disp(diff);
 
 	save('FEM_PEA_simple.mat');
 
@@ -146,6 +146,9 @@ end;
 %% Inspect policy function
 i_k = ceil(nK-5);
 i_E = ceil(nE-5);
+kplus_high = zeros(1,length(Anodes));
+q_high = kplus_high;
+CIPI_high = q_high;
 for i_A = 1:length(Anodes)
 	state(1) = Anodes(i_A); state(3) = Enodes(i_E);
 	state(2) = Knodes(i_k); e = state(3);
@@ -158,6 +161,9 @@ end
 
 i_k = ceil(5);
 i_E = ceil(5);
+kplus_low = zeros(1,length(Anodes));
+q_low = kplus_low;
+CIPI_low = q_low;
 for i_A = 1:length(Anodes)
 	state(1) = Anodes(i_A); state(3) = Enodes(i_E);
 	state(2) = Knodes(i_k); e = state(3);
@@ -183,10 +189,10 @@ for t = 1:T
 	state = [a k e];
 	y = a*k^aalpha;
 	ysim(t) = y;
-	
+
 	control = state2control_FEM_simple(state,aindexsim(t),grids,param);
     qsim(t) = control.q;
-	
+
     if t <= T-1
         uu = rand;
         aindexsim(t+1) = find(P_cdf(aindexsim(t),:)>=uu,1,'first');
@@ -212,10 +218,14 @@ periods = 40;
 impulse = -2;
 
 parfor i = 1:length(peak_aidx)
-	impulse_panel(i,:,:) = simforward_A(peak_inits(:,i),peak_aidx(i),impulse,periods,grids,param);
-	control_panel(i,:,:) = simforward_A(peak_inits(:,i),peak_aidx(i),randn,periods,grids,param);
+	impulse_panel(i,:,:) = ...
+	simforward_A(peak_inits(:,i),peak_aidx(i),impulse,periods,grids,param);
+	control_panel(i,:,:) = ...
+	simforward_A(peak_inits(:,i),peak_aidx(i),randn,periods,grids,param);
 	GIRF_panel(i,:,:) = impulse_panel(i,:,:)-control_panel(i,:,:);
 end
+impulse_peak_badshock = squeeze(mean(impulse_panel));
+control_peak_badshock = squeeze(mean(control_panel));
 GIRF_peak_badshock = squeeze(mean(GIRF_panel));
 
 parfor i = 1:length(trough_aidx)
@@ -223,6 +233,8 @@ parfor i = 1:length(trough_aidx)
 	control_panel(i,:,:) = simforward_A(trough_inits(:,i),trough_aidx(i),randn,periods,grids,param);
 	GIRF_panel(i,:,:) = impulse_panel(i,:,:)-control_panel(i,:,:);
 end
+impulse_trough_badshock = squeeze(mean(impulse_panel));
+control_trough_badshock = squeeze(mean(control_panel));
 GIRF_trough_badshock = squeeze(mean(GIRF_panel));
 
 %% Generalized IRF, +2 ssigma shock
@@ -233,6 +245,8 @@ parfor i = 1:length(peak_aidx)
 	control_panel(i,:,:) = simforward_A(peak_inits(:,i),peak_aidx(i),randn,periods,grids,param);
 	GIRF_panel(i,:,:) = impulse_panel(i,:,:)-control_panel(i,:,:);
 end
+impulse_peak_goodshock = squeeze(mean(impulse_panel));
+control_peak_goodshock = squeeze(mean(control_panel));
 GIRF_peak_goodshock = squeeze(mean(GIRF_panel));
 
 parfor i = 1:length(trough_aidx)
@@ -240,6 +254,8 @@ parfor i = 1:length(trough_aidx)
 	control_panel(i,:,:) = simforward_A(trough_inits(:,i),trough_aidx(i),randn,periods,grids,param);
 	GIRF_panel(i,:,:) = impulse_panel(i,:,:)-control_panel(i,:,:);
 end
+impulse_trough_goodshock = squeeze(mean(impulse_panel));
+control_trough_goodshock = squeeze(mean(control_panel));
 GIRF_trough_goodshock = squeeze(mean(GIRF_panel));
 
 %% Plotting conditional on state
@@ -621,7 +637,7 @@ vv = zeros(nA,nk_ee,nnn_ee);
 tthetattheta = zeros(nA,nk_ee,nnn_ee);
 cc_dynare = cc;
 vv_dynare = vv;
-tthetattheta_dynare = tthetattheta; 
+tthetattheta_dynare = tthetattheta;
 
 for i_a = 1:nA
     a = Agrid(i_a);
@@ -631,12 +647,12 @@ for i_a = 1:nA
             e = Ngrid(i_e);
 			tot_stuff = a*k^aalpha*e^(1-aalpha)+(1-ddelta)*k+z*(1-e);
 			ustuff = xxi*(1-e)^(1-eeta);
-            
+
             EMK = globaleval(k,e,Knodes,Enodes,squeeze(EMKval(i_a,:,:)));
             EMF = globaleval(k,e,Knodes,Enodes,squeeze(EMEval(i_a,:,:)));
             c = 1/(bbeta*EMK);
-            q = kkappa/c/(bbeta*EMF);            
-            
+            q = kkappa/c/(bbeta*EMF);
+
             if q <= 0
                 warning('q <= 0!!')
                 q = 0;
@@ -650,7 +666,7 @@ for i_a = 1:nA
                 kplus = tot_stuff - c - kkappa*v;
                 nplus = (1-x)*e + xxi*v^eeta*(1-e)^(1-eeta);
             end
-            
+
             cc(i_a,i_k,i_e) = c;
             cc_dynare(i_a,i_k,i_e) = exp( 2.130385+0.039519*(log(a)/rrho-0)+0.606879*(log(k)-log(k_ss))+0.005573*(log(e)-log(n_ss)) );
             vv(i_a,i_k,i_e) = v;
@@ -686,13 +702,13 @@ for i_a = 1:nA
 			ttheta_imp = (q_imp/xxi)^(1/(eeta-1));
 			v_imp = ttheta_imp*(1-e);
 
-            EEerror_c(i_a,i_k,i_e) = abs((c-c_imp)/c_imp);   
-            EEerror_v(i_a,i_k,i_e) = abs((v-v_imp)/v_imp);  
+            EEerror_c(i_a,i_k,i_e) = abs((c-c_imp)/c_imp);
+            EEerror_v(i_a,i_k,i_e) = abs((v-v_imp)/v_imp);
         end
     end
 end
-EEerror_c_inf = norm(EEerror_c(:),inf)
-EEerror_v_inf = norm(EEerror_v(:),inf)
+EEerror_c_inf = norm(EEerror_c(:),inf);
+EEerror_v_inf = norm(EEerror_v(:),inf);
 
 EEerror_c_mean = mean(EEerror_c(:));
 EEerror_v_mean = mean(EEerror_v(:));
@@ -720,7 +736,8 @@ title('Vacancy policy at lowerest productivity and capital.')
 print(v_policy,'-dpsc','./results/v_policy.eps')
 
 c_policy = figure;
-plot(Kgrid,squeeze(cc(ceil(nA/2),:,ceil(nnn_ee/2))),Kgrid,squeeze(cc_dynare(ceil(nA/2),:,ceil(nnn_ee/2))))
+plot(Kgrid,squeeze(cc(ceil(nA/2),:,ceil(nnn_ee/2))),...
+Kgrid,squeeze(cc_dynare(ceil(nA/2),:,ceil(nnn_ee/2))))
 title('Consumption policies at SS.')
 print(c_policy,'-dpsc','./results/c_policy.eps')
 xlabel('Capital')
