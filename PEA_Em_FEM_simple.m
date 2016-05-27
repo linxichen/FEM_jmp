@@ -145,10 +145,12 @@ end;
 
 %% Inspect policy function
 i_k = ceil(nK-5);
-i_E = ceil(nE-5);
+i_E = ceil(5);
 kplus_high = zeros(1,length(Anodes));
 q_high = kplus_high;
 CIPI_high = q_high;
+f_high = q_high;
+v_high = q_high;
 for i_A = 1:length(Anodes)
 	state(1) = Anodes(i_A); state(3) = Enodes(i_E);
 	state(2) = Knodes(i_k); e = state(3);
@@ -157,13 +159,17 @@ for i_A = 1:length(Anodes)
 	q_high(i_A) = control.q;
 	eplus = control.eplus;
 	CIPI_high(i_A) = eplus - e;
+	f_high(i_A) = control.f;
+	v_high(i_A) = control.v;
 end
 
 i_k = ceil(5);
-i_E = ceil(5);
+i_E = ceil(nE-5);
 kplus_low = zeros(1,length(Anodes));
 q_low = kplus_low;
 CIPI_low = q_low;
+v_low = q_low;
+f_low = q_low;
 for i_A = 1:length(Anodes)
 	state(1) = Anodes(i_A); state(3) = Enodes(i_E);
 	state(2) = Knodes(i_k); e = state(3);
@@ -172,10 +178,34 @@ for i_A = 1:length(Anodes)
 	q_low(i_A) = control.q;
 	eplus = control.eplus;
 	CIPI_low(i_A) = eplus - e;
+	v_low(i_A) = control.v;
+	f_low(i_A) = control.f;
 end
 
 figure
 plot(Anodes,CIPI_low,'-b',Anodes,CIPI_high,'-.r')
+title('CIPI')
+legend('low','high')
+xlabel('TFP')
+
+figure
+plot(Anodes,v_low,'-b',Anodes,v_high,'-.r')
+title('Demand')
+legend('low','high')
+xlabel('TFP')
+
+figure
+plot(Anodes,f_low,'-b',Anodes,f_high,'-.r')
+title('Sell Prob.')
+legend('low','high')
+xlabel('TFP')
+
+figure
+plot(Anodes,q_low,'-b',Anodes,q_high,'-.r')
+title('Buy Prob.')
+legend('low','high')
+xlabel('TFP')
+
 
 %% Simulation
 P_cdf = cumsum(P,2);
