@@ -11,7 +11,7 @@ mypara_simple;
 nA = 17;
 nK = 75;
 nE = 75;
-T = 1e6;
+T = 1e5;
 [P,lnAgrid] = rouwen(rrho_z,0,ssigma_z/sqrt(1-rrho_z^2),nA);
 Anodes = exp(lnAgrid);
 P = P';
@@ -251,7 +251,7 @@ parfor i = 1:length(peak_aidx)
 	impulse_panel(i,:,:) = ...
 	simforward_A(peak_inits(:,i),peak_aidx(i),impulse,periods,grids,param);
 	control_panel(i,:,:) = ...
-	simforward_A(peak_inits(:,i),peak_aidx(i),randn,periods,grids,param);
+	simforward_A(peak_inits(:,i),peak_aidx(i),0,periods,grids,param);
 	GIRF_panel(i,:,:) = impulse_panel(i,:,:)-control_panel(i,:,:);
 end
 impulse_peak_badshock = squeeze(mean(impulse_panel));
@@ -260,7 +260,7 @@ GIRF_peak_badshock = squeeze(mean(GIRF_panel));
 
 parfor i = 1:length(trough_aidx)
 	impulse_panel(i,:,:) = simforward_A(trough_inits(:,i),trough_aidx(i),impulse,periods,grids,param);
-	control_panel(i,:,:) = simforward_A(trough_inits(:,i),trough_aidx(i),randn,periods,grids,param);
+	control_panel(i,:,:) = simforward_A(trough_inits(:,i),trough_aidx(i),0,periods,grids,param);
 	GIRF_panel(i,:,:) = impulse_panel(i,:,:)-control_panel(i,:,:);
 end
 impulse_trough_badshock = squeeze(mean(impulse_panel));
@@ -272,7 +272,7 @@ impulse = 2;
 
 parfor i = 1:length(peak_aidx)
 	impulse_panel(i,:,:) = simforward_A(peak_inits(:,i),peak_aidx(i),impulse,periods,grids,param);
-	control_panel(i,:,:) = simforward_A(peak_inits(:,i),peak_aidx(i),randn,periods,grids,param);
+	control_panel(i,:,:) = simforward_A(peak_inits(:,i),peak_aidx(i),0,periods,grids,param);
 	GIRF_panel(i,:,:) = impulse_panel(i,:,:)-control_panel(i,:,:);
 end
 impulse_peak_goodshock = squeeze(mean(impulse_panel));
@@ -281,7 +281,7 @@ GIRF_peak_goodshock = squeeze(mean(GIRF_panel));
 
 parfor i = 1:length(trough_aidx)
 	impulse_panel(i,:,:) = simforward_A(trough_inits(:,i),trough_aidx(i),impulse,periods,grids,param);
-	control_panel(i,:,:) = simforward_A(trough_inits(:,i),trough_aidx(i),randn,periods,grids,param);
+	control_panel(i,:,:) = simforward_A(trough_inits(:,i),trough_aidx(i),0,periods,grids,param);
 	GIRF_panel(i,:,:) = impulse_panel(i,:,:)-control_panel(i,:,:);
 end
 impulse_trough_goodshock = squeeze(mean(impulse_panel));
