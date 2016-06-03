@@ -315,6 +315,30 @@ title('CIPI Response, Ratio Peak vs Trough')
 set(gca,'FontSize',14,'fontWeight','bold')
 print('./figures/statedependency_CIPI_peak_ratio','-depsc2')
 
+figure
+plot(1:plotperiods+1,GIRF_trough_badshock(1,1:plotperiods+1),'LineWidth',3)
+hold on
+plot(1:plotperiods+1,GIRF_trough_goodshock(1,1:plotperiods+1),'r-.','LineWidth',3)
+xlabel('Periods From Impact')
+ylabel('Generalized IRF, Level')
+legend('-2 Std TFP Shock','+2 Std TFP Good Shock')
+title('CIPI Response, At trough')
+set(gca,'FontSize',14,'fontWeight','bold')
+print('./figures/statedependency_CIPI_trough_levels','-depsc2')
+
+figure
+plot(1:plotperiods+1,...
+	 abs(GIRF_trough_badshock(1,1:plotperiods+1))./...
+	 abs(GIRF_trough_goodshock(1,1:plotperiods+1)),...
+	 'LineWidth',3)
+hold on
+legend('Ratio at Trough')
+xlabel('Periods From Impact')
+ylabel('Ratio, -2 Shock/+2 Shock')
+title('CIPI Response, Bad vs Good')
+set(gca,'FontSize',14,'fontWeight','bold')
+print('./figures/statedependency_CIPI_trough_ratio','-depsc2')
+
 % GDP
 figure
 plot(1:plotperiods+1,GIRF_peak_badshock(2,1:plotperiods+1),'LineWidth',3)
@@ -328,6 +352,17 @@ set(gca,'FontSize',14,'fontWeight','bold')
 print('./figures/statedependency_GDP_peak_levels','-depsc2')
 
 figure
+plot(1:plotperiods+1,GIRF_trough_badshock(2,1:plotperiods+1),'LineWidth',3)
+hold on
+plot(1:plotperiods+1,GIRF_trough_goodshock(2,1:plotperiods+1),'r-.','LineWidth',3)
+xlabel('Periods From Impact')
+ylabel('Generalized IRF, Level')
+legend('-2 Std TFP Shock','+2 Std TFP Good Shock')
+title('GDP Response, At Trough')
+set(gca,'FontSize',14,'fontWeight','bold')
+print('./figures/statedependency_GDP_trough_levels','-depsc2')
+
+figure
 plot(1:plotperiods+1,...
 	 abs(GIRF_peak_badshock(2,1:plotperiods+1))./...
 	 abs(GIRF_peak_goodshock(2,1:plotperiods+1)),...
@@ -336,9 +371,22 @@ hold on
 legend('Ratio at Peak')
 xlabel('Periods From Impact')
 ylabel('Ratio, -2 Shock/+2 Shock')
-title('GDP Response, Ratio Peak vs Trough')
+title('GDP Response, Ratio Bad Shock vs Good')
 set(gca,'FontSize',14,'fontWeight','bold')
 print('./figures/statedependency_GDP_peak_ratio','-depsc2')
+
+figure
+plot(1:plotperiods+1,...
+	 abs(GIRF_trough_badshock(2,1:plotperiods+1))./...
+	 abs(GIRF_trough_goodshock(2,1:plotperiods+1)),...
+	 'LineWidth',3)
+hold on
+legend('Ratio at Trough')
+xlabel('Periods From Impact')
+ylabel('Ratio, -2 Shock/+2 Shock')
+title('GDP Response, Ratio Bad Shock vs Good Shock')
+set(gca,'FontSize',14,'fontWeight','bold')
+print('./figures/statedependency_GDP_trough_ratio','-depsc2')
 
 figure
 plot(1:plotperiods+1,GIRF_peak_badshock(2,1:plotperiods+1)-GIRF_peak_badshock(2,1:1),'LineWidth',3)
@@ -367,7 +415,7 @@ title('CIPI/GDP, 2 std negative TFP shock')
 set(gca,'FontSize',14,'fontWeight','bold')
 print('./figures/statedependency_share_minustwoshock','-depsc2')
 
-% buying prob., q
+% buying prob., q, peak
 figure
 plot(1:plotperiods+1,GIRF_peak_badshock(4,1:plotperiods+1),'LineWidth',3)
 hold on
@@ -388,9 +436,34 @@ hold on
 legend('Ratio at Peak')
 xlabel('Periods From Impact')
 ylabel('Ratio, -2 Shock/+2 Shock')
-title('Buy Prob. Response, Ratio Peak vs Trough')
+title('Buy Prob. Response, Ratio Bad vs Good')
 set(gca,'FontSize',14,'fontWeight','bold')
 print('./figures/statedependency_q_peak_ratio','-depsc2')
+
+% buying prob., q, trough
+figure
+plot(1:plotperiods+1,GIRF_trough_badshock(4,1:plotperiods+1),'LineWidth',3)
+hold on
+plot(1:plotperiods+1,GIRF_trough_goodshock(4,1:plotperiods+1),'r-.','LineWidth',3)
+xlabel('Periods From Impact')
+ylabel('Generalized IRF, Level')
+legend('-2 Std TFP Shock','+2 Std TFP Good Shock')
+title('Buy Prob. Response, At Trough')
+set(gca,'FontSize',14,'fontWeight','bold')
+print('./figures/statedependency_q_trough_levels','-depsc2')
+
+figure
+plot(1:plotperiods+1,...
+	 abs(GIRF_trough_badshock(4,1:plotperiods+1))./...
+	 abs(GIRF_trough_goodshock(4,1:plotperiods+1)),...
+	 'LineWidth',3)
+hold on
+legend('Ratio at Trough')
+xlabel('Periods From Impact')
+ylabel('Ratio, -2 Shock/+2 Shock')
+title('Buy Prob. Response, Ratio Bad vs Good')
+set(gca,'FontSize',14,'fontWeight','bold')
+print('./figures/statedependency_q_trough_ratio','-depsc2')
 
 % selling prob., f
 figure
