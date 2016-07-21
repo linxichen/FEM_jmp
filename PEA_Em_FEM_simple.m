@@ -5,13 +5,15 @@ clc
 format long
 addpath(genpath('./tools'))
 addpath(genpath('./param'))
+addpath(genpath('~/Dropbox/matlabtools'));
+
 
 %% Set the stage
 mypara_simple;
 nA = 17;
 nK = 75;
 nE = 75;
-T = 1e5;
+T = 1e3;
 [P,lnAgrid] = rouwen(rrho_z,0,ssigma_z/sqrt(1-rrho_z^2),nA);
 Anodes = exp(lnAgrid);
 P = P';
@@ -230,6 +232,22 @@ for t = 1:T
         esim(t+1) = control.eplus;
     end
 end
+
+%% Dating and Check asymmetry
+CIPI_sim = esim(2:end)-esim(1:end-1);
+[recess] = bryBos(ysim',1);
+figure
+plot(ysim);
+hold on
+recess_shade(recess,'yellow')
+
+% steepness
+xF = CIPI_sim';
+output = wilcoxon(xF,recess(2:end));
+totalOutput = [[repmat([6 4],2,1) [1:2]' output]];
+disp('            avg. contr.    avg. expan.       W-stat     p-value      Wilc t-stat   Basic t-stat  p-value');
+rowNames = strvcat('Duration ','Steepness ');
+disp(horzcat(rowNames,num2str(output)));
 
 %% Select from Simulation initial states
 peak_select = ysim > prctile(ysim,95);
